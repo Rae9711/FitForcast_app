@@ -2,22 +2,38 @@
 /**
  * Logger Utility
  *
- * Provides lightweight structured logging for consistent telemetry across the backend.
- * Supports log levels: info, error, warn, debug.
- * Formats payloads and outputs JSON for easy tracing.
+ * Lightweight structured logger used throughout the backend. It intentionally
+ * keeps dependencies minimal (no bunyan/pino) because tests and small demo
+ * deployments prefer a zero-config approach. Messages are output as JSON so
+ * logs can be parsed reliably by machines or easily grepped during development.
+ *
+ * Usage:
+ * - `logger.info('message', { additional: 'context' })`
+ * - `logger.error('failed', { error })`
+ *
+ * Important notes:
+ * - The `meta` argument should be a plain object containing serializable
+ *   values (avoid circular references).
+ * - In production you may want to replace this module with a more featureful
+ *   logger that supports sampling, structured transports, and log rotation.
  */
 
 type LogLevel = 'info' | 'error' | 'warn' | 'debug';
 
-// Formats log payload and chooses correct console method
+// Builds a consistent JSON payload and selects the appropriate console method.
+// Using console.* keeps the runtime lightweight while tests can still capture
+// output. The JSON shape is simple: { level, message, ...meta, timestamp }.
 const log = (level: LogLevel, message: string, meta?: Record<string, unknown>) => {
   const payload = { level, message, ...meta, timestamp: new Date().toISOString() };
-  // Using console methods keeps bootstrap lightweight while still structured enough for tracing.
+  // console[level] isn't typed as a function for every 'level', so choose
+  // between `log` and the specific level name. eslint is disabled for the
+  // direct console call to avoid forcing a logging dependency.
   // eslint-disable-next-line no-console
   console[level === 'info' ? 'log' : level](JSON.stringify(payload));
 };
 
-// Exported logger facade exposes helpers for each log level
+// Public logger facade exposes level helpers so callers don't need to pass
+// the level string manually, ensuring consistent payloads across the codebase.
 export const logger = {
   info: (message: string, meta?: Record<string, unknown>) => log('info', message, meta),
   error: (message: string, meta?: Record<string, unknown>) => log('error', message, meta),

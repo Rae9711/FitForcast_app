@@ -1,5 +1,24 @@
-/// Generate a TypeScript-ready Prisma client for interacting with the database.
+/// Prisma schema for FitForecast backend
+///
+/// This file defines the database models, enums, and indexes used by the
+/// stream-1-backend. It is the single source of truth for the schema that
+/// Prisma Client generates TypeScript types from. When the schema changes,
+/// run `npx prisma migrate dev` (development) or the appropriate migration
+/// workflow to update the database and the generated client.
+///
+/// High-level notes:
+/// - `User` owns `LogEntry` rows; `LogEntry` may have optional NLP-enriched
+///   `ParsedEntry` data and multiple `FeelingEntry` rows (pre/post snapshots).
+/// - `BaselineMetric` stores rolling aggregated metrics per user/scope/window
+///   (e.g., 7/30/365-day averages) that the insights engine consumes.
+/// - `Insight` rows represent surfaced recommendations derived deterministically
+///   from baseline deltas and rules.
+///
+/// Keep comments here to help developers understand table relationships and
+/// the intent behind indexes / uniqueness constraints.
 generator client {
+  provider = "prisma-client-js"
+}
   provider = "prisma-client-js"
 }
 

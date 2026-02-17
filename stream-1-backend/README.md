@@ -206,3 +206,49 @@ See [../docs/INTEGRATION_CONTRACT.md](../docs/INTEGRATION_CONTRACT.md) for detai
 5. Build baseline computation service
 6. Create sample seeds with 3 users, 50+ entries
 7. Share OpenAPI spec with other streams
+
+## Run & Development (local)
+
+Set environment variables (example):
+
+```bash
+export DATABASE_URL="postgresql://user:pass@localhost:5432/fitforecast"
+```
+
+Install and run migrations, then seed sample data (seed is configurable):
+
+```bash
+npm ci
+npx prisma migrate dev --name init
+# Seed 200 entries per user for realistic perf tests
+SEED_ENTRY_COUNT=200 npx ts-node seeds/seed.ts
+```
+
+Start the server:
+
+```bash
+npm start
+```
+
+Run tests and coverage locally:
+
+```bash
+npm test
+# with coverage
+npm test -- --coverage
+```
+
+Measured results from local runs (your mileage may vary):
+
+- Seed: `SEED_ENTRY_COUNT=200` entries per user used for perf tests.
+- Baseline recompute: ~47ms on the seeded dataset (single-user recompute).
+- Load test (example): 50 connections × 60s → p99 ≈ 17ms, 0 errors (see `scripts/` for autocannon helper).
+- Current local test coverage: ~85.49% (from `npm test -- --coverage`).
+
+OpenAPI / Docs
+
+The OpenAPI spec lives at `docs/openapi.yaml`. The server can optionally mount Swagger UI to serve the spec during local development (see `src/index.ts`).
+
+CI
+
+We recommend adding a GitHub Actions workflow to run tests and enforce a coverage threshold (80%). A sample workflow file is included in `.github/workflows/test.yml`.

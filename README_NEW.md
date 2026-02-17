@@ -308,3 +308,10 @@ Each stream is an independent, self-contained work package. Teams can develop an
 - **Stream 3 (Analytics):** [stream-3-analytics/README.md](stream-3-analytics/README.md)
 - **Stream 4 (Integration):** [stream-4-integration/README.md](stream-4-integration/README.md)
 - **Scenarios & Test Data:** [stream-4-integration/scenarios/README.md](stream-4-integration/scenarios/README.md)
+
+## CI & Docs (local snapshot)
+
+- Current local test coverage (example run): **85.49%**. Add the CI workflow to enforce an 80% threshold across branches.
+- OpenAPI spec for Stream 1: [stream-1-backend/docs/openapi.yaml](stream-1-backend/docs/openapi.yaml)
+
+When ready, add a GitHub Actions badge and host the OpenAPI docs via the server or GitHub Pages.

@@ -11,6 +11,18 @@ import insightsRouter from './api/insights';
 // Shared middleware and utilities keep cross-cutting concerns centralized.
 import { attachUser } from './middleware/auth';
 import { logger } from './utils/logger';
+import path from 'path';
+
+// Optional: serve API docs via Swagger UI when dependency is installed.
+// This is non-critical and will not affect runtime if `swagger-ui-express`
+// is not present in the environment during tests.
+let swaggerUi: any;
+try {
+  // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-var-requires
+  swaggerUi = require('swagger-ui-express');
+} catch (err) {
+  swaggerUi = null;
+}
 
 // Load environment variables before any component accesses configuration.
 dotenv.config();
@@ -35,6 +47,13 @@ app.use('/entries', entriesRouter);
 app.use('/entries/:entryId/feelings', feelingsRouter);
 app.use('/trends', trendsRouter);
 app.use('/insights', insightsRouter);
+
+// Serve OpenAPI YAML and host Swagger UI at /docs when available.
+if (swaggerUi) {
+  const openApiPath = path.join(process.cwd(), 'stream-1-backend', 'docs', 'openapi.yaml');
+  app.get('/docs/openapi.yaml', (_req, res) => res.sendFile(openApiPath));
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(undefined, { swaggerUrl: '/docs/openapi.yaml' }));
+}
 
 // Resolve the port from configuration with a development default.
 const port = Number(process.env.PORT) || 3000;

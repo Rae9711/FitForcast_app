@@ -61,6 +61,8 @@ export const queueBaselineRecomputeForUser = async (userId: string) => {
  * Also triggers insight evaluation after baselines are updated.
  */
 export const recomputeBaselinesForUser = async (userId: string) => {
+  const startMs = Date.now();
+  logger.info('Starting baseline recompute', { userId });
   for (const windowDays of BASELINE_WINDOWS) {
     const windowStart = getWindowStart(windowDays);
 
@@ -91,6 +93,11 @@ export const recomputeBaselinesForUser = async (userId: string) => {
 
   // Evaluate insights after baselines are updated
   await evaluateInsightsForUser(userId);
+  const durationMs = Date.now() - startMs;
+  logger.info('Finished baseline recompute', { userId, durationMs });
+  if (durationMs > 5000) {
+    logger.warn('Baseline recompute exceeded 5s threshold', { userId, durationMs });
+  }
 };
 
 
