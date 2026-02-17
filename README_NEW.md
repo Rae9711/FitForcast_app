@@ -1,5 +1,8 @@
 # FitForecast: Personal Behavioral Pattern Analyzer
 
+[![CI Tests](https://github.com/Rae9711/FitForcast_app/actions/workflows/test.yml/badge.svg)](https://github.com/Rae9711/FitForcast_app/actions/workflows/test.yml)
+[![coverage](https://img.shields.io/badge/coverage-85.49%25-yellow.svg)](https://github.com/Rae9711/FitForcast_app/actions/workflows/test.yml)
+
 FitForecast helps users discover **their own patterns**—not through generic tracking or coaching, but through personalized behavioral insights derived from their unique baseline. Users log workouts and meals in natural language, capture how they felt before and after, and receive explainable insights tied to their personal trends.
 
 ## Product Promise: Personalization-First
