@@ -12,7 +12,7 @@ The Backend is the data and compute foundation for FitForecast. It owns the REST
 
 - **REST API:** Endpoints for logging entries, capturing feelings, retrieving trends, and listing insights.
 - **Database:** PostgreSQL schema with Prisma ORM for User, LogEntry, FeelingEntry, ParsedEntry, BaselineMetric, and Insight entities.
-- **Baseline Computation:** Rolling 14/30-day aggregations on entry submission, per user and per metric.
+- **Baseline Computation:** Rolling 7/30/365-day aggregations on entry submission, per user and per metric.
 - **Deterministic Insights Engine:** Rule evaluation service that fires insights based on baseline deltas.
 - **Validation & Error Handling:** Input validation, error responses, and graceful degradation.
 
@@ -60,7 +60,7 @@ BaselineMetric
 ├── scope (workout | meal | mood)
 ├── metric (e.g., post_strength_energy, morning_energy, stress_variance)
 ├── value (float) — computed average
-├── window_days (14 | 30)
+├── window_days (7 | 30 | 365)
 ├── data_points (int) — number of entries used
 ├── updated_at
 
@@ -98,7 +98,7 @@ Insight
 
 #### Trends & Baselines
 - **GET /trends** — Retrieve user's current baselines and trends
-  - Query: `?user_id=X&window_days=14`
+  - Query: `?user_id=X&window_days=7` (supported: 7, 30, 365)
   - Response: 
     ```json
     {
