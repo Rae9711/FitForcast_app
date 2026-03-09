@@ -35,12 +35,12 @@ app.use(cors());
 // Automatically parse JSON payloads on every request.
 app.use(express.json());
 // Inject the resolved user id on each request for downstream handlers.
-app.use(attachUser);
-
 // Lightweight readiness probe ensures deployment targets can check service health.
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.use(attachUser);
 
 // Mount feature routers under their respective prefixes.
 app.use('/entries', entriesRouter);

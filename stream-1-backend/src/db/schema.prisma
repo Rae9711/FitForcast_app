@@ -19,8 +19,6 @@
 generator client {
   provider = "prisma-client-js"
 }
-  provider = "prisma-client-js"
-}
 
 /// Configure the Postgres datasource and pull connection details from the environment.
 datasource db {
