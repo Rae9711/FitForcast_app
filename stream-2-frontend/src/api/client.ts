@@ -26,7 +26,7 @@ export interface IApiClient {
 
 class ApiClient implements IApiClient {
   private axiosInstance: AxiosInstance;
-  private baseURL: string = import.meta.env.VITE_API_BASE_URL || '/api';
+  public baseURL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
   constructor() {
     this.axiosInstance = axios.create({
@@ -36,11 +36,28 @@ class ApiClient implements IApiClient {
       },
     });
 
+    // Add auth token to all requests
+    this.axiosInstance.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
     // Add response error handling
     this.axiosInstance.interceptors.response.use(
       (response) => response,
       (error) => {
         console.error('API Error:', error);
+        // Handle 401 Unauthorized (token expired, invalid, etc.)
+        if (error.response?.status === 401) {
+          localStorage.removeItem('authToken');
+          window.location.href = '/login';
+        }
         throw error;
       }
     );
@@ -131,3 +148,4 @@ class ApiClient implements IApiClient {
 }
 
 export const apiClient = new ApiClient();
+export const api = apiClient;

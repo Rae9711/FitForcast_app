@@ -1,6 +1,7 @@
-import React, { useReducer, useCallback } from 'react';
+import React, { useReducer, useCallback, useEffect } from 'react';
 import { AppContext, AppContextType } from './AppContext';
 import { Entry, Insight, TrendsData } from '../types/index';
+import { useAuth } from './AuthContext';
 
 interface AppState {
   userId: string;

@@ -1,12 +1,17 @@
 import { NextFunction, Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
 
 /**
  * Auth Middleware
  *
- * Attaches a userId to each request, inferring from headers or falling back to environment config.
- * Ensures all downstream handlers can rely on req.userId.
+ * Supports two authentication modes:
+ * 1. JWT token from Authorization header (production)
+ * 2. x-user-id header or DEFAULT_USER_ID fallback (development)
+ *
+ * Attaches userId to each request for downstream handlers.
  * Returns 401 Unauthorized if userId cannot be determined.
  */
+
 // Extend Express' request typing once so every handler can rely on req.userId.
 declare global {
   namespace Express {
@@ -16,22 +21,56 @@ declare global {
   }
 }
 
+const JWT_SECRET = process.env.JWT_SECRET || 'fitforecast-dev-secret-change-in-production';
 
-// Infers userId from request headers or environment fallback
+interface JwtPayload {
+  userId: string;
+  email: string;
+}
+
+// Try to extract and verify JWT token
+const verifyToken = (req: Request): string | null => {
+  const authHeader = req.header('Authorization');
+  if (!authHeader) {
+    return null;
+  }
+
+  // Expected format: "Bearer <token>"
+  const parts = authHeader.split(' ');
+  if (parts.length !== 2 || parts[0] !== 'Bearer') {
+    return null;
+  }
+
+  try {
+    const token = parts[1];
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    return decoded.userId;
+  } catch (error) {
+    return null;
+  }
+};
+
+// Infers userId from JWT token, headers, or environment fallback
 const inferUserId = (req: Request): string => {
+  // 1. Try JWT token first (primary auth method)
+  const tokenUserId = verifyToken(req);
+  if (tokenUserId) {
+    return tokenUserId;
+  }
+
+  // 2. Try x-user-id header (for development/testing)
   const headerUserId = req.header('x-user-id');
   if (headerUserId) {
     return headerUserId;
   }
 
-  // Fallback to environment config for dev flows
+  // 3. Fallback to environment config (for unauthenticated dev flows)
   const fallback = process.env.DEFAULT_USER_ID;
   if (!fallback) {
-    throw new Error('DEFAULT_USER_ID must be configured for unauthenticated development flows.');
+    throw new Error('Authentication required. Please provide a valid token.');
   }
   return fallback;
 };
-
 
 // Attaches userId to request or returns 401 if not found
 export const attachUser = (req: Request, res: Response, next: NextFunction) => {
@@ -41,4 +80,17 @@ export const attachUser = (req: Request, res: Response, next: NextFunction) => {
   } catch (error) {
     res.status(401).json({ message: 'Unauthorized', detail: (error as Error).message });
   }
+};
+
+// Optional middleware for routes that REQUIRE authentication (no fallback)
+export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+  const tokenUserId = verifyToken(req);
+  if (!tokenUserId) {
+    return res.status(401).json({
+      message: 'Authentication required',
+      detail: 'Please provide a valid JWT token',
+    });
+  }
+  req.userId = tokenUserId;
+  next();
 };

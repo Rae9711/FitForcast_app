@@ -4,6 +4,7 @@ import cors from 'cors';
 import express from 'express';
 import dotenv from 'dotenv';
 // Route modules encapsulate each feature surface.
+import authRouter from './api/auth';
 import entriesRouter from './api/entries';
 import feelingsRouter from './api/feelings';
 import trendsRouter from './api/trends';
@@ -39,6 +40,10 @@ app.use(express.json());
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+// Auth routes (signup, login) don't require authentication
+app.use('/auth', authRouter);
+
+// Apply auth middleware to all routes below
 
 app.use(attachUser);
 
