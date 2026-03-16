@@ -2,7 +2,6 @@
 
 > **Personal Behavioral Pattern Analyzer** – Discover your unique fitness patterns through data-driven insights
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
@@ -428,17 +427,12 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 - No known critical bugs currently
 - See [GitHub Issues](https://github.com/Rae9711/FitForcast_app/issues) for minor issues
 
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 ## 👥 Team & Acknowledgments
 
-**Created by**: Rae
+**Created by**: Haorui Wang(Rae), Amy Do, Anik Mumssen, Mahitha Karnati
 
 **Special Thanks**:
 - All contributors and testers
