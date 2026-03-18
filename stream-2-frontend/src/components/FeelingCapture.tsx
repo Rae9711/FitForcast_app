@@ -20,9 +20,10 @@ export const FeelingCapture: React.FC<FeelingCaptureProps> = ({
 }) => {
   const { register, handleSubmit, watch } = useForm({
     defaultValues: {
-      valence: '0',
-      energy: '50',
-      stress: '50',
+      // Backend expects 1–5 integers; keep UI sliders but map their values.
+      valence: '3',
+      energy: '3',
+      stress: '3',
       notes: '',
     },
   });
@@ -32,11 +33,18 @@ export const FeelingCapture: React.FC<FeelingCaptureProps> = ({
   const stress = watch('stress');
 
   const onSubmitForm = handleSubmit((data) => {
+    // Ensure we always send 1–5 integers to the backend.
+    const clampToScale = (raw: string) => {
+      const n = parseInt(raw, 10);
+      if (Number.isNaN(n)) return 3;
+      return Math.min(5, Math.max(1, n));
+    };
+
     onSubmit({
       when,
-      valence: parseInt(data.valence),
-      energy: parseInt(data.energy),
-      stress: parseInt(data.stress),
+      valence: clampToScale(data.valence),
+      energy: clampToScale(data.energy),
+      stress: clampToScale(data.stress),
       notes: data.notes || undefined,
     });
   });
@@ -61,8 +69,9 @@ export const FeelingCapture: React.FC<FeelingCaptureProps> = ({
         </label>
         <input
           type="range"
-          min="-100"
-          max="100"
+          min="1"
+          max="5"
+          step="1"
           {...register('valence')}
           className="mt-2 w-full accent-primary"
         />
@@ -75,12 +84,13 @@ export const FeelingCapture: React.FC<FeelingCaptureProps> = ({
 
       <div>
         <label className="block text-sm font-medium text-gray-700">
-          Energy Level: {parseInt(energy)}%
+          Energy Level: {parseInt(energy)} / 5
         </label>
         <input
           type="range"
-          min="0"
-          max="100"
+          min="1"
+          max="5"
+          step="1"
           {...register('energy')}
           className="mt-2 w-full accent-primary"
         />
@@ -92,12 +102,13 @@ export const FeelingCapture: React.FC<FeelingCaptureProps> = ({
 
       <div>
         <label className="block text-sm font-medium text-gray-700">
-          Stress Level: {parseInt(stress)}%
+          Stress Level: {parseInt(stress)} / 5
         </label>
         <input
           type="range"
-          min="0"
-          max="100"
+          min="1"
+          max="5"
+          step="1"
           {...register('stress')}
           className="mt-2 w-full accent-danger"
         />

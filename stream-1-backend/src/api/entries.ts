@@ -154,6 +154,32 @@ router.get('/:id', validateRequest(getEntrySchema, 'params'), async (req, res, n
 
 
 /**
+ * DELETE /entries/:id
+ * Deletes a log entry (and its feelings) for the authenticated user.
+ */
+router.delete('/:id', validateRequest(getEntrySchema, 'params'), async (req, res, next) => {
+  try {
+    const { id } = res.locals.params as z.infer<typeof getEntrySchema>;
+
+    // Ensure the entry exists and belongs to the current user
+    const entry = await prisma.logEntry.findUnique({ where: { id } });
+    if (!entry || entry.userId !== req.userId) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    // Delete dependent feelings first, then the entry itself
+    await prisma.feelingEntry.deleteMany({ where: { logEntryId: id } });
+    await prisma.logEntry.delete({ where: { id } });
+
+    return res.status(204).send();
+  } catch (error) {
+    logger.error('Failed to delete entry', { error });
+    next(error);
+  }
+});
+
+
+/**
  * Helper: Converts FeelingEntry records into API response contract.
  */
 const toApiFeeling = (feeling: FeelingEntry) => ({

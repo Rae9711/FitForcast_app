@@ -31,6 +31,19 @@ export const History: React.FC = () => {
     // Could navigate to entry details page in the future
   };
 
+  const handleDeleteEntry = async (entryId: string) => {
+    try {
+      setLoading(true);
+      await apiClient.deleteEntry(entryId);
+      setEntries(entries.filter((e) => e.id !== entryId));
+    } catch (err) {
+      setError('Failed to delete entry');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-8">
@@ -52,6 +65,7 @@ export const History: React.FC = () => {
         <EntryList
           entries={entries}
           onSelectEntry={handleSelectEntry}
+          onDeleteEntry={handleDeleteEntry}
         />
       </div>
 

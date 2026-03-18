@@ -24,7 +24,7 @@ type AppAction =
   | { type: 'CLEAR_ERROR' };
 
 const initialState: AppState = {
-  userId: 'user-123', // Default from mocks
+  userId: '',
   entries: [],
   insights: [],
   trendsData: null,
@@ -65,6 +65,7 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   const setUserId = useCallback((userId: string) => {
@@ -102,6 +103,13 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
+
+  // Keep AppState.userId in sync with the authenticated user
+  useEffect(() => {
+    if (user?.id) {
+      dispatch({ type: 'SET_USER_ID', payload: user.id });
+    }
+  }, [user?.id]);
 
   const value: AppContextType = {
     ...state,

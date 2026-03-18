@@ -32,7 +32,8 @@ export const TrendsChart: React.FC<TrendsChartProps> = ({
     'consistency',
   ];
 
-  const windows = [14, 30, 90];
+  // Supported windows should align with backend BASELINE_WINDOWS / SUPPORTED_WINDOWS
+  const windows = [7, 30, 365];
 
   if (isLoading) {
     return (
@@ -92,7 +93,8 @@ export const TrendsChart: React.FC<TrendsChartProps> = ({
               tick={{ fontSize: 12 }}
               interval={Math.floor(data.data.length / 7)}
             />
-            <YAxis domain={[0, 100]} />
+            {/* Feelings are on a 1–5 scale; match the Y-axis to that so Athena's demo data is readable. */}
+            <YAxis domain={[0, 5]} tickCount={6} />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',

@@ -5,12 +5,14 @@ interface EntryListProps {
   entries: Entry[];
   onSelectEntry?: (entry: Entry) => void;
   isLoading?: boolean;
+  onDeleteEntry?: (entryId: string) => void;
 }
 
 export const EntryList: React.FC<EntryListProps> = ({
   entries,
   onSelectEntry,
   isLoading = false,
+  onDeleteEntry,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'workout' | 'meal'>('all');
 
@@ -117,10 +119,13 @@ export const EntryList: React.FC<EntryListProps> = ({
               <th className="px-4 py-2 text-left font-semibold text-gray-700">Type</th>
               <th className="px-4 py-2 text-left font-semibold text-gray-700">Description</th>
               <th className="px-4 py-2 text-left font-semibold text-gray-700">Feelings</th>
+              {onDeleteEntry && (
+                <th className="px-4 py-2 text-right font-semibold text-gray-700">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
-            {filteredEntries.map((entry, index) => (
+            {filteredEntries.map((entry) => (
               <tr
                 key={entry.id}
                 onClick={() => onSelectEntry?.(entry)}
@@ -144,6 +149,20 @@ export const EntryList: React.FC<EntryListProps> = ({
                     </div>
                   )}
                 </td>
+                {onDeleteEntry && (
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteEntry(entry.id);
+                      }}
+                      className="text-red-500 text-xs hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
