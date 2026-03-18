@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { Entry, FeelingEntry, Insight, TrendsData } from '../types/index';
 import { mockApiClient } from './mocks';
 
-const USE_MOCKS = import.meta.env.DEV; // Use mocks in development
+const USE_MOCKS = false; // Disable mocks - use real API with seeded data
 
 export interface IApiClient {
   createEntry(
@@ -86,7 +86,7 @@ class ApiClient implements IApiClient {
     }
 
     const response = await this.axiosInstance.get<Entry[]>('/entries', {
-      params: { userId, limit: limit || 50, page: page || 1 },
+      params: { userId, limit: limit || 100, offset: ((page || 1) - 1) * (limit || 100) },
     });
     return response.data;
   }

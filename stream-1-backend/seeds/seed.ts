@@ -1,6 +1,7 @@
 import { prisma } from '../src/db/prisma';
 import { LogEntryType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { recomputeBaselinesForUser } from '../src/services/baseline';
 
 // Enhanced Seed Script with Distinct User Personas
 // 
@@ -230,6 +231,11 @@ const seed = async () => {
     }
     
     console.log(`✅ Created ${entriesCreated} entries for ${user.name}`);
+    
+    // Compute baselines for this user
+    console.log(`📊 Computing baselines for ${user.name}...`);
+    await recomputeBaselinesForUser(user.id);
+    console.log(`✅ Baselines computed for ${user.name}`);
   }
 };
 
