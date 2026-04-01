@@ -63,6 +63,24 @@ Create Jupyter notebooks to:
 - **Testing:** pytest (Python) or Jest (TypeScript)
 - **Version Control:** Git + notebooks (tracked)
 
+## CLI runner
+
+A small CLI is provided to run the evaluator against fixture users and emit insights as JSON. It is useful for producing insight payloads for Stream 1 integration tests or for quick prototyping.
+
+Example (from repo root):
+
+```bash
+source /Users/amums/umich-classes/eecs449/myenv/bin/activate
+cd stream-3-analytics
+PYTHONPATH=$(pwd) python run/run_evaluator.py -i test_data/sample_users.json -o run/output/insights.json
+```
+
+The script will load users from the input JSON, call `evaluate_rules_for_user` from `src.rules.evaluators`, and write an array of `{user_id, insights}` objects to the output file.
+
+## New rule and scoring
+
+- `routine_stabilizes_mood`: detects whether days with both a workout and a meal show reduced stress variance compared to non-routine days. The rule returns `supporting_stats` containing variances, the variance ratio, data counts, and a `score` computed via `compute_insight_score` in `src/utils/helpers.py`.
+
 ## File Structure
 
 ```
