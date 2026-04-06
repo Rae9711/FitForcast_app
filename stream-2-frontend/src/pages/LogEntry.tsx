@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppProvider';
 import { apiClient } from '../api/client';
 import { EntryComposer } from '../components/EntryComposer';
 import { FeelingCapture } from '../components/FeelingCapture';
+import { useAppContext } from '../context/AppProvider';
 import { Entry } from '../types/index';
 
-type Stage = 'entry' | 'pre-feeling' | 'post-feeling' | 'complete';
+type Stage = 'entry' | 'pre' | 'post' | 'complete';
 
 export const LogEntry: React.FC = () => {
   const navigate = useNavigate();
-  const { userId, addEntry, setLoading, setError } = useAppContext();
-
+  const { addEntry, setLoading, setError } = useAppContext();
   const [stage, setStage] = useState<Stage>('entry');
   const [currentEntry, setCurrentEntry] = useState<Entry | null>(null);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [message, setMessage] = useState('');
 
   const handleEntrySubmit = async (
     type: 'workout' | 'meal',
@@ -25,160 +24,130 @@ export const LogEntry: React.FC = () => {
       setLoading(true);
       const entry = await apiClient.createEntry(type, raw_text, occurred_at);
       setCurrentEntry(entry);
-      setStage('pre-feeling');
-    } catch (err) {
+      setStage('pre');
+      setMessage('Entry created. Capture how you felt before the activity.');
+    } catch (error) {
       setError('Failed to create entry');
-      console.error(err);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFeelingSubmit = async (feelings: {
+  const handleFeelingSubmit = async (payload: {
     when: 'pre' | 'post';
     valence: number;
     energy: number;
     stress: number;
     notes?: string;
   }) => {
-    if (!currentEntry) return;
+    if (!currentEntry) {
+      return;
+    }
 
     try {
       setLoading(true);
       await apiClient.addFeeling(
         currentEntry.id,
-        feelings.when,
-        feelings.valence,
-        feelings.energy,
-        feelings.stress,
-        feelings.notes
+        payload.when,
+        payload.valence,
+        payload.energy,
+        payload.stress,
+        payload.notes
       );
 
-      if (feelings.when === 'pre') {
-        setSuccessMessage('Pre-entry feeling recorded!');
-        // Continue to show form for post-feeling in next step
-        setTimeout(() => {
-          setStage('post-feeling');
-        }, 1000);
+      if (payload.when === 'pre') {
+        setStage('post');
+        setMessage('Pre-entry feeling saved. Capture how you felt after the activity.');
       } else {
-        // Complete the flow
         addEntry(currentEntry);
-        setSuccessMessage('Entry logged successfully! 🎉');
         setStage('complete');
-        setTimeout(() => {
-          navigate('/history');
-        }, 2000);
+        setMessage('Entry logged successfully. Your baselines and insights will update automatically.');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Failed to record feeling');
-      console.error(err);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  const completeWithoutStage = () => {
+    if (!currentEntry) {
+      return;
+    }
+    addEntry(currentEntry);
+    setStage('complete');
+    setMessage('Entry logged successfully. Add complete feelings next time for stronger insights.');
+  };
+
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Log an Entry</h1>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900">Log an entry</h1>
+        <p className="mt-2 text-slate-500">Capture the entry first, then record how you felt before and after so the insight engine can explain the pattern.</p>
+      </div>
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
-          {successMessage}
+      {message && (
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          {message}
         </div>
       )}
 
-      {/* Entry Composer Stage */}
       {stage === 'entry' && (
-        <div className="bg-white rounded-lg shadow p-8">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <EntryComposer onSubmit={handleEntrySubmit} />
-        </div>
+        </section>
       )}
 
-      {/* Pre-Feeling Stage */}
-      {stage === 'pre-feeling' && currentEntry && (
-        <div className="bg-white rounded-lg shadow p-8 space-y-6">
-          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
-            <div className="font-semibold mb-1">Entry Created!</div>
-            <p className="text-sm">{currentEntry.raw_text}</p>
+      {stage === 'pre' && currentEntry && (
+        <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="font-semibold text-slate-900">Current entry</div>
+            <div className="mt-1">{currentEntry.raw_text}</div>
           </div>
-
-          <FeelingCapture
-            when="pre"
-            onSubmit={handleFeelingSubmit}
-          />
-
-          <button
-            onClick={() => setStage('complete')}
-            className="text-gray-600 hover:text-gray-800 text-sm"
-          >
-            Skip to completion
+          <FeelingCapture when="pre" onSubmit={handleFeelingSubmit} />
+          <button type="button" onClick={() => setStage('post')} className="text-sm font-medium text-slate-600 hover:text-slate-900">
+            Skip pre-feeling and continue
           </button>
-        </div>
+        </section>
       )}
 
-      {/* Post-Feeling Stage (if we implement it) */}
-      {stage === 'post-feeling' && currentEntry && (
-        <div className="bg-white rounded-lg shadow p-8 space-y-6">
-          <FeelingCapture
-            when="post"
-            onSubmit={handleFeelingSubmit}
-          />
-
-          <button
-            onClick={() => {
-              addEntry(currentEntry);
-              setStage('complete');
-              setTimeout(() => {
-                navigate('/history');
-              }, 1000);
-            }}
-            className="text-gray-600 hover:text-gray-800 text-sm"
-          >
-            Skip post-feeling
+      {stage === 'post' && currentEntry && (
+        <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="font-semibold text-slate-900">Current entry</div>
+            <div className="mt-1">{currentEntry.raw_text}</div>
+          </div>
+          <FeelingCapture when="post" onSubmit={handleFeelingSubmit} />
+          <button type="button" onClick={completeWithoutStage} className="text-sm font-medium text-slate-600 hover:text-slate-900">
+            Skip post-feeling and finish
           </button>
-        </div>
+        </section>
       )}
 
-      {/* Completion Stage */}
       {stage === 'complete' && (
-        <div className="bg-white rounded-lg shadow p-8 text-center space-y-6">
-          <div className="text-5xl">✅</div>
-          <h2 className="text-2xl font-bold text-gray-900">Entry Logged!</h2>
-          <p className="text-gray-600">
-            Your entry has been saved and will help us generate personalized insights.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={() => navigate('/history')}
-              className="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-6 rounded"
-            >
-              View History
+        <section className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="text-5xl">✓</div>
+          <h2 className="mt-4 text-2xl font-semibold text-slate-900">Entry logged</h2>
+          <p className="mt-2 text-slate-500">Your dashboard and trend views will reflect the new entry as soon as the backend recompute finishes.</p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <button onClick={() => navigate('/')} className="rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500">
+              Return to dashboard
             </button>
             <button
               onClick={() => {
-                setStage('entry');
                 setCurrentEntry(null);
-                setSuccessMessage('');
+                setMessage('');
+                setStage('entry');
               }}
-              className="bg-secondary hover:bg-purple-600 text-white font-bold py-2 px-6 rounded"
+              className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-              Log Another Entry
+              Log another entry
             </button>
           </div>
-        </div>
+        </section>
       )}
-
-      {/* Back Button */}
-      <div className="mt-8">
-        <button
-          onClick={() => navigate('/')}
-          className="text-gray-600 hover:text-gray-800"
-        >
-          ← Back to Home
-        </button>
-      </div>
     </div>
   );
 };

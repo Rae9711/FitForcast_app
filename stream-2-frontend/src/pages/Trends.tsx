@@ -1,135 +1,97 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppProvider';
 import { apiClient } from '../api/client';
-import { TrendsChart } from '../components/TrendsChart';
 import { InsightCard } from '../components/InsightCard';
-import { TrendsData } from '../types/index';
+import { PredictionPanel } from '../components/PredictionPanel';
+import { TrendsChart } from '../components/TrendsChart';
+import { useAppContext } from '../context/AppProvider';
+import { PredictionBundle, TrendMetricKey, TrendsData } from '../types/index';
 
 export const Trends: React.FC = () => {
   const navigate = useNavigate();
-  const { userId, insights, setInsights, dismissInsight, setLoading, setError } =
-    useAppContext();
+  const { userId, insights, setInsights, dismissInsight, setLoading, setError } = useAppContext();
   const [trendsData, setTrendsData] = useState<TrendsData | null>(null);
-  const [selectedMetric, setSelectedMetric] = useState('post-energy');
+  const [predictions, setPredictions] = useState<PredictionBundle | null>(null);
+  const [selectedMetric, setSelectedMetric] = useState<TrendMetricKey>('post-energy');
   const [selectedWindow, setSelectedWindow] = useState(30);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [trends, insights_data] = await Promise.all([
-          apiClient.getTrends(userId, selectedWindow),
+        const [trends, fetchedInsights, fetchedPredictions] = await Promise.all([
+          apiClient.getTrends(userId, selectedWindow, selectedMetric),
           apiClient.getInsights(userId),
+          apiClient.getPredictions(userId),
         ]);
         setTrendsData(trends);
-        setInsights(insights_data);
-      } catch (err) {
-        setError('Failed to load trends data');
-        console.error(err);
+        setInsights(fetchedInsights);
+        setPredictions(fetchedPredictions);
+      } catch (error) {
+        setError('Failed to load trend data');
+        console.error(error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadData();
-  }, [userId, selectedWindow]);
-
-  const handleMetricChange = (metric: string) => {
-    setSelectedMetric(metric);
-    // In a real app, we'd refetch data for the new metric
-  };
-
-  const handleWindowChange = (days: number) => {
-    setSelectedWindow(days);
-  };
+    if (userId) {
+      loadData();
+    }
+  }, [selectedMetric, selectedWindow, setError, setInsights, setLoading, userId]);
 
   const handleDismissInsight = async (insightId: string) => {
     try {
       await apiClient.dismissInsight(insightId);
       dismissInsight(insightId);
-    } catch (err) {
+    } catch (error) {
       setError('Failed to dismiss insight');
-      console.error(err);
+      console.error(error);
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Your Trends</h1>
-          <p className="text-gray-600 mt-2">
-            Compare your baseline with recent activity
-          </p>
+          <h1 className="text-3xl font-bold text-slate-900">Trends</h1>
+          <p className="mt-2 text-slate-500">Use baselines, recent activity, and insights together to understand what is repeatable and what needs adjustment.</p>
         </div>
         <button
           onClick={() => navigate('/log')}
-          className="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-6 rounded"
+          className="rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
         >
-          + Log Entry
+          Log another entry
         </button>
       </div>
 
-      {/* Trends Chart */}
       {trendsData && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <TrendsChart
             data={trendsData}
-            onMetricChange={handleMetricChange}
-            onWindowChange={handleWindowChange}
+            onMetricChange={(metric) => setSelectedMetric(metric as TrendMetricKey)}
+            onWindowChange={setSelectedWindow}
           />
-        </div>
+        </section>
       )}
 
-      {/* Insights Section */}
-      {insights.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900">Personalized Insights</h2>
-          <div className="space-y-3">
-            {insights.map((insight) => (
-              <InsightCard
-                key={insight.id}
-                insight={insight}
-                onDismiss={handleDismissInsight}
-              />
-            ))}
+      {predictions && <PredictionPanel bundle={predictions} />}
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-semibold text-slate-900">Insight stack</h2>
+          <p className="text-sm text-slate-500">The same rules shown on the dashboard remain available here so you can compare them against the charts.</p>
+        </div>
+        {insights.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500 shadow-sm">
+            No active insights yet. Keep logging complete entries to build stronger trend signals.
           </div>
-        </div>
-      )}
-
-      {/* Empty State for Insights */}
-      {insights.length === 0 && (
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <div className="text-4xl mb-4">🎯</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No insights yet
-          </h3>
-          <p className="text-gray-600">
-            Keep logging entries to unlock personalized insights based on your patterns
-          </p>
-        </div>
-      )}
-
-      {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="font-semibold text-blue-900 mb-2">💡 Understanding Your Trends</h3>
-        <ul className="text-blue-800 text-sm space-y-1">
-          <li>• <strong>Baseline:</strong> Your historical average across all entries</li>
-          <li>• <strong>Recent Activity:</strong> Your current performance in the selected time window</li>
-          <li>• <strong>Insights:</strong> Actionable discoveries based on your logged data</li>
-        </ul>
-      </div>
-
-      {/* Back Button */}
-      <div className="mt-8">
-        <button
-          onClick={() => navigate('/')}
-          className="text-gray-600 hover:text-gray-800"
-        >
-          ← Back to Home
-        </button>
-      </div>
+        ) : (
+          insights.map((insight) => (
+            <InsightCard key={insight.id} insight={insight} onDismiss={handleDismissInsight} />
+          ))
+        )}
+      </section>
     </div>
   );
 };

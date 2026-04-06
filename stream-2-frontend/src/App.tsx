@@ -1,15 +1,27 @@
-import React from 'react';
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { AppProvider } from './context/AppProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { Dashboard } from './pages/Dashboard';
-import { LogEntry } from './pages/LogEntry';
-import { History } from './pages/History';
-import { Trends } from './pages/Trends';
-import { LoginPage } from './pages/Login';
-import { SignupPage } from './pages/Signup';
 import './App.css';
+
+const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
+const LogEntry = lazy(() => import('./pages/LogEntry').then((module) => ({ default: module.LogEntry })));
+const History = lazy(() => import('./pages/History').then((module) => ({ default: module.History })));
+const Trends = lazy(() => import('./pages/Trends').then((module) => ({ default: module.Trends })));
+const LoginPage = lazy(() => import('./pages/Login').then((module) => ({ default: module.LoginPage })));
+const SignupPage = lazy(() => import('./pages/Signup').then((module) => ({ default: module.SignupPage })));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
 
 function AppContent() {
   const { isAuthenticated, logout, user } = useAuth();
@@ -70,42 +82,44 @@ function AppContent() {
 
       {/* Main Content */}
       <main className={isAuthenticated ? "max-w-6xl mx-auto px-4 py-8" : ""}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/log"
-            element={
-              <ProtectedRoute>
-                <LogEntry />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/history"
-            element={
-              <ProtectedRoute>
-                <History />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trends"
-            element={
-              <ProtectedRoute>
-                <Trends />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/log"
+              element={
+                <ProtectedRoute>
+                  <LogEntry />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute>
+                  <History />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trends"
+              element={
+                <ProtectedRoute>
+                  <Trends />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Suspense>
       </main>
 
       {/* Footer */}

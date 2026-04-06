@@ -6,59 +6,66 @@ interface InsightCardProps {
   onDismiss?: (insightId: string) => void;
 }
 
+const priorityClasses = {
+  high: 'border-rose-300 bg-rose-50 text-rose-900',
+  medium: 'border-amber-300 bg-amber-50 text-amber-900',
+  low: 'border-emerald-300 bg-emerald-50 text-emerald-900',
+} as const;
+
+const categoryBadge = {
+  energy: 'bg-sky-100 text-sky-800',
+  stress: 'bg-rose-100 text-rose-800',
+  nutrition: 'bg-emerald-100 text-emerald-800',
+  recovery: 'bg-violet-100 text-violet-800',
+  consistency: 'bg-slate-200 text-slate-800',
+} as const;
+
 export const InsightCard: React.FC<InsightCardProps> = ({ insight, onDismiss }) => {
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      energy: 'bg-yellow-50 border-yellow-200',
-      stress: 'bg-red-50 border-red-200',
-      nutrition: 'bg-green-50 border-green-200',
-      recovery: 'bg-blue-50 border-blue-200',
-      consistency: 'bg-purple-50 border-purple-200',
-    };
-    return colors[category] || 'bg-gray-50 border-gray-200';
-  };
-
-  const getCategoryBadgeColor = (category: string) => {
-    const colors: Record<string, string> = {
-      energy: 'bg-yellow-100 text-yellow-800',
-      stress: 'bg-red-100 text-red-800',
-      nutrition: 'bg-green-100 text-green-800',
-      recovery: 'bg-blue-100 text-blue-800',
-      consistency: 'bg-purple-100 text-purple-800',
-    };
-    return colors[category] || 'bg-gray-100 text-gray-800';
-  };
-
   return (
-    <div className={`border-l-4 border border-gray-200 rounded-lg p-4 ${getCategoryColor(insight.category)}`}>
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center gap-2">
-          <span className={`px-2 py-1 rounded text-xs font-semibold ${getCategoryBadgeColor(insight.category)}`}>
-            {insight.category.charAt(0).toUpperCase() + insight.category.slice(1)}
+    <article className={`rounded-3xl border p-5 shadow-sm ${priorityClasses[insight.priority]}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${categoryBadge[insight.category as keyof typeof categoryBadge] ?? 'bg-slate-100 text-slate-800'}`}>
+            {insight.category}
+          </span>
+          <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+            {insight.priority} priority
           </span>
         </div>
-        <button
-          onClick={() => onDismiss?.(insight.id)}
-          className="text-gray-400 hover:text-gray-600 text-xl"
-          title="Dismiss this insight"
-        >
-          ✕
-        </button>
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={() => onDismiss(insight.id)}
+            className="rounded-full border border-current/20 px-3 py-1 text-xs font-medium transition hover:bg-white/70"
+          >
+            Dismiss
+          </button>
+        )}
       </div>
 
-      <h3 className="font-semibold text-gray-900 mb-1">{insight.title}</h3>
-      <p className="text-gray-700 text-sm mb-3">{insight.summary}</p>
+      <h3 className="mt-4 text-xl font-semibold">{insight.title}</h3>
+      <p className="mt-2 text-sm leading-6">{insight.summary}</p>
 
-      <div className="grid grid-cols-2 gap-2">
-        {insight.stats.map((stat) => (
-          <div key={stat.key} className="bg-white bg-opacity-50 rounded p-2">
-            <div className="text-xs text-gray-600 capitalize">
-              {stat.key.replace(/_/g, ' ')}
+      {insight.bullets.length > 0 && (
+        <ul className="mt-4 space-y-2 text-sm">
+          {insight.bullets.map((bullet) => (
+            <li key={bullet} className="rounded-2xl bg-white/70 px-4 py-3">
+              {bullet}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {insight.stats.length > 0 && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {insight.stats.map((stat) => (
+            <div key={stat.label} className="rounded-2xl bg-white/70 px-4 py-3">
+              <div className="text-xs uppercase tracking-wide text-slate-500">{stat.label.replace(/_/g, ' ')}</div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">{stat.value}</div>
             </div>
-            <div className="text-sm font-bold text-gray-900">{stat.value}</div>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+    </article>
   );
 };

@@ -16,6 +16,7 @@ Stream 4 is the quality gate and deployment coordinator. It owns:
 
 - **Rule-Based NLP Parser:** Keyword/regex extraction for activity type, duration, intensity, meal type, food tags.
 - **LLM Fallback (Optional, Disabled):** GPT/Claude for entries that fail rule-based parsing.
+- **Jac Insight Rewriter (Optional):** Jac byLLM microservice for polishing deterministic backend insights.
 - **Scenario Documentation:** User stories, sample logs, edge cases.
 - **E2E Tests:** Playwright or Cypress tests covering primary user flows.
 - **Deployment Setup:** Docker, docker-compose, GitHub Actions, environment variables.
@@ -35,6 +36,13 @@ Deterministic keyword/regex extraction for:
 For entries the rule-based parser can't handle, optionally trigger:
 - GPT-4 or Claude for improved extraction
 - Gated behind config flag: `LLM_PARSER_ENABLED=false`
+
+### Jac Insight Rewriter (Optional)
+For teams that want the LLM layer implemented with Jac, this stream now includes a Jac byLLM service in `llm/jac_service/`.
+
+- Stream 1 still decides when an insight exists.
+- Jac rewrites only the narrative copy.
+- If the Jac service is offline, Stream 1 falls back to deterministic copy.
 
 ## Part 2: Scenarios & Test Cases
 
@@ -97,6 +105,12 @@ Prepopulate DB with:
 stream-4-integration/
 ├── README.md
 ├── llm/
+│   ├── README.md
+│   ├── jac_service/
+│   │   ├── jac.toml
+│   │   ├── rewrite_insight.jac
+│   │   ├── server.py
+│   │   └── requirements.txt
 │   ├── src/
 │   │   ├── parser.ts
 │   │   ├── llm-fallback.ts

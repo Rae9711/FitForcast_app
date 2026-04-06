@@ -13,6 +13,6 @@
     "sourceMap": true,
     "types": ["node", "jest"]
   },
-  "include": ["src", "tests", "seeds"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "tests", "seeds"]
 }

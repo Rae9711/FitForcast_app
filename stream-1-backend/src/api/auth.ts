@@ -5,17 +5,48 @@ import { z } from 'zod';
 import { prisma } from '../db/prisma';
 import { logger } from '../utils/logger';
 import { requireAuth } from '../middleware/auth';
+import { jwtAudience, jwtExpiresIn, jwtIssuer, jwtSecret } from '../config';
 
 const router = Router();
 
-// Get JWT secret from environment or use a default for development
-const JWT_SECRET = process.env.JWT_SECRET || 'fitforecast-dev-secret-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const tokenOptions: jwt.SignOptions = {
+  expiresIn: jwtExpiresIn as jwt.SignOptions['expiresIn'],
+  issuer: jwtIssuer,
+  audience: jwtAudience,
+};
+
+const toErrorMeta = (error: unknown) => ({
+  error: error instanceof Error ? error.message : error,
+});
+
+const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_ATTEMPTS = 10;
+const attemptsByKey = new Map<string, { count: number; resetAt: number }>();
+
+const getRequestKey = (req: Request) => req.ip || req.header('x-forwarded-for') || 'unknown';
+
+const checkRateLimit = (key: string) => {
+  const now = Date.now();
+  const current = attemptsByKey.get(key);
+  if (!current || current.resetAt <= now) {
+    attemptsByKey.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return false;
+  }
+
+  current.count += 1;
+  attemptsByKey.set(key, current);
+  return current.count > MAX_ATTEMPTS;
+};
+
+const clearRateLimit = (key: string) => {
+  attemptsByKey.delete(key);
+};
 
 // Validation schemas
 const signupSchema = z.object({
   email: z.string().email('Invalid email format'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().regex(PASSWORD_POLICY, 'Password must include upper, lower, and numeric characters'),
   name: z.string().optional(),
 });
 
@@ -30,6 +61,11 @@ const loginSchema = z.object({
  */
 router.post('/signup', async (req: Request, res: Response) => {
   try {
+    const requestKey = `${getRequestKey(req)}:signup`;
+    if (checkRateLimit(requestKey)) {
+      return res.status(429).json({ message: 'Too many signup attempts. Please try again later.' });
+    }
+
     // Validate input
     const validation = signupSchema.safeParse(req.body);
     if (!validation.success) {
@@ -40,10 +76,11 @@ router.post('/signup', async (req: Request, res: Response) => {
     }
 
     const { email, password, name } = validation.data;
+    const normalizedEmail = email.trim().toLowerCase();
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -59,7 +96,7 @@ router.post('/signup', async (req: Request, res: Response) => {
     // Create user
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
         name: name || null,
       },
@@ -74,9 +111,11 @@ router.post('/signup', async (req: Request, res: Response) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      jwtSecret,
+      tokenOptions
     );
+
+    clearRateLimit(requestKey);
 
     logger.info(`New user signed up: ${user.email}`);
 
@@ -86,7 +125,7 @@ router.post('/signup', async (req: Request, res: Response) => {
       token,
     });
   } catch (error) {
-    logger.error('Signup error:', error);
+    logger.error('Signup error', toErrorMeta(error));
     res.status(500).json({
       message: 'Internal server error during signup',
     });
@@ -99,6 +138,11 @@ router.post('/signup', async (req: Request, res: Response) => {
  */
 router.post('/login', async (req: Request, res: Response) => {
   try {
+    const requestKey = `${getRequestKey(req)}:login`;
+    if (checkRateLimit(requestKey)) {
+      return res.status(429).json({ message: 'Too many login attempts. Please try again later.' });
+    }
+
     // Validate input
     const validation = loginSchema.safeParse(req.body);
     if (!validation.success) {
@@ -109,10 +153,11 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const { email, password } = validation.data;
+    const normalizedEmail = email.trim().toLowerCase();
 
     // Find user
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
@@ -133,9 +178,11 @@ router.post('/login', async (req: Request, res: Response) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      jwtSecret,
+      tokenOptions
     );
+
+    clearRateLimit(requestKey);
 
     logger.info(`User logged in: ${user.email}`);
 
@@ -150,7 +197,7 @@ router.post('/login', async (req: Request, res: Response) => {
       token,
     });
   } catch (error) {
-    logger.error('Login error:', error);
+    logger.error('Login error', toErrorMeta(error));
     res.status(500).json({
       message: 'Internal server error during login',
     });
@@ -183,7 +230,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response) => {
 
     res.json({ user });
   } catch (error) {
-    logger.error('Get user error:', error);
+    logger.error('Get user error', toErrorMeta(error));
     res.status(500).json({
       message: 'Internal server error',
     });

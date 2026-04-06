@@ -9,9 +9,16 @@ import entriesRouter from './api/entries';
 import feelingsRouter from './api/feelings';
 import trendsRouter from './api/trends';
 import insightsRouter from './api/insights';
+import predictionsRouter from './api/predictions';
 // Shared middleware and utilities keep cross-cutting concerns centralized.
 import { attachUser } from './middleware/auth';
+import { allowedCorsOrigins, jsonBodyLimit } from './config';
 import { logger } from './utils/logger';
+import {
+  metricsHandler,
+  requestMetricsMiddleware,
+  securityHeadersMiddleware,
+} from './middleware/monitoring';
 import path from 'path';
 
 // Optional: serve API docs via Swagger UI when dependency is installed.
@@ -32,14 +39,25 @@ dotenv.config();
 const app = express();
 
 // Enable CORS so the frontend can hit the API from other origins during development.
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedCorsOrigins.length === 0 || allowedCorsOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('CORS origin not allowed'));
+  },
+}));
+app.use(securityHeadersMiddleware);
+app.use(requestMetricsMiddleware);
 // Automatically parse JSON payloads on every request.
-app.use(express.json());
+app.use(express.json({ limit: jsonBodyLimit }));
 // Inject the resolved user id on each request for downstream handlers.
 // Lightweight readiness probe ensures deployment targets can check service health.
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+app.get('/metrics', metricsHandler);
 // Auth routes (signup, login) don't require authentication
 app.use('/auth', authRouter);
 
@@ -52,6 +70,7 @@ app.use('/entries', entriesRouter);
 app.use('/entries/:entryId/feelings', feelingsRouter);
 app.use('/trends', trendsRouter);
 app.use('/insights', insightsRouter);
+app.use('/predictions', predictionsRouter);
 
 // Serve OpenAPI YAML and host Swagger UI at /docs when available.
 if (swaggerUi) {

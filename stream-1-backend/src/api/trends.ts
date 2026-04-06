@@ -19,7 +19,7 @@ const router = Router();
 
 
 // Supported window lengths for baseline metrics (days)
-const SUPPORTED_WINDOWS = [7, 30, 365] as const;
+const SUPPORTED_WINDOWS = [7, 30, 90, 365] as const;
 
 // Schema for validating query params for /trends endpoint
 // user_id: Optional override
@@ -30,7 +30,7 @@ const querySchema = z.object({
     .number()
     .int()
     .refine((value) => SUPPORTED_WINDOWS.includes(value as (typeof SUPPORTED_WINDOWS)[number]), {
-      message: 'window_days must be one of 7, 30, 365'
+      message: 'window_days must be one of 7, 30, 90, 365'
     })
     .default(7)
 });

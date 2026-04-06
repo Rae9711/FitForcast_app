@@ -1,13 +1,13 @@
 import React from 'react';
 import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from 'recharts';
 import { TrendsData } from '../types/index';
 
@@ -24,121 +24,100 @@ export const TrendsChart: React.FC<TrendsChartProps> = ({
   onWindowChange,
   isLoading = false,
 }) => {
-  const metrics = [
-    'post-energy',
-    'post-valence',
-    'post-stress',
-    'frequency',
-    'consistency',
-  ];
-
-  // Supported windows should align with backend BASELINE_WINDOWS / SUPPORTED_WINDOWS
-  const windows = [7, 30, 365];
+  const windows = [7, 30, 90, 365];
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading trends...</p>
-        </div>
+      <div className="flex h-96 items-center justify-center rounded-3xl bg-slate-50">
+        <div className="text-center text-slate-500">Loading trends...</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Metric
-          </label>
-          <select
-            onChange={(e) => onMetricChange?.(e.target.value)}
-            defaultValue="post-energy"
-            className="rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm border p-2"
-          >
-            {metrics.map((m) => (
-              <option key={m} value={m}>
-                {m.replace('-', ' ')}
-              </option>
-            ))}
-          </select>
+          <h2 className="text-2xl font-semibold text-slate-900">Metric trends</h2>
+          <p className="text-sm text-slate-500">Compare your recent scores against the baseline that FitForecast computed from your own history.</p>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Time Range
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <label className="text-sm text-slate-600">
+            Metric
+            <select
+              onChange={(event) => onMetricChange?.(event.target.value)}
+              value={data.metric}
+              className="mt-2 block rounded-2xl border border-slate-300 px-3 py-2 text-slate-900"
+            >
+              {data.availableMetrics.map((metric) => (
+                <option key={metric} value={metric}>
+                  {metric.replace('post-', '').replace('-', ' ')}
+                </option>
+              ))}
+            </select>
           </label>
-          <select
-            onChange={(e) => onWindowChange?.(parseInt(e.target.value))}
-            defaultValue={data.windowDays}
-            className="rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm border p-2"
-          >
-            {windows.map((w) => (
-              <option key={w} value={w}>
-                Last {w} days
-              </option>
-            ))}
-          </select>
+          <label className="text-sm text-slate-600">
+            Window
+            <select
+              onChange={(event) => onWindowChange?.(parseInt(event.target.value, 10))}
+              value={data.windowDays}
+              className="mt-2 block rounded-2xl border border-slate-300 px-3 py-2 text-slate-900"
+            >
+              {windows.map((window) => (
+                <option key={window} value={window}>
+                  Last {window} days
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4">
-        <ResponsiveContainer width="100%" height={400}>
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <ResponsiveContainer width="100%" height={380}>
           <LineChart data={data.data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 12 }}
-              interval={Math.floor(data.data.length / 7)}
-            />
-            {/* Feelings are on a 1–5 scale; match the Y-axis to that so Athena's demo data is readable. */}
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
             <YAxis domain={[0, 5]} tickCount={6} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-              }}
-            />
+            <Tooltip />
             <Legend />
-            <Line
-              type="monotone"
-              dataKey="baseline"
-              stroke="#8884d8"
-              name="Your Baseline"
-              dot={false}
-              isAnimationActive={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="actual"
-              stroke="#82ca9d"
-              name="Recent Activity"
-              dot={false}
-              isAnimationActive={false}
-            />
+            <Line type="monotone" dataKey="baseline" stroke="#0f172a" strokeWidth={2} dot={false} name="Baseline" />
+            <Line type="monotone" dataKey="actual" stroke="#0ea5e9" strokeWidth={2} dot={false} name="Recent" />
+            <Line type="monotone" dataKey="pre" stroke="#94a3b8" strokeDasharray="4 4" dot={false} name="Pre" />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div className="bg-blue-50 p-4 rounded">
-          <div className="text-gray-600 font-medium">Your Baseline</div>
-          <div className="text-2xl font-bold text-blue-600">
-            {Math.round(
-              data.data.reduce((acc, d) => acc + d.baseline, 0) / data.data.length
-            )}
+      <div className="grid gap-4 md:grid-cols-3">
+        {data.summaries.map((summary) => (
+          <div key={summary.label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="text-sm uppercase tracking-wide text-slate-500">{summary.label}</div>
+            <div className="mt-3 text-3xl font-semibold text-slate-900">{summary.value}</div>
+            <div className="mt-2 text-sm text-slate-500">{summary.detail}</div>
           </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900">Pattern highlights</h3>
+          <ul className="mt-4 space-y-3 text-sm text-slate-600">
+            {data.patternHighlights.map((highlight) => (
+              <li key={highlight} className="rounded-2xl bg-slate-50 px-4 py-3">
+                {highlight}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="bg-green-50 p-4 rounded">
-          <div className="text-gray-600 font-medium">Recent Avg</div>
-          <div className="text-2xl font-bold text-green-600">
-            {Math.round(
-              data.data.reduce((acc, d) => acc + d.actual, 0) / data.data.length
-            )}
-          </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900">Recommended next checks</h3>
+          <ul className="mt-4 space-y-3 text-sm text-slate-600">
+            {data.recommendations.map((recommendation) => (
+              <li key={recommendation} className="rounded-2xl bg-slate-50 px-4 py-3">
+                {recommendation}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>

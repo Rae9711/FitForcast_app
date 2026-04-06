@@ -126,11 +126,11 @@ Created comprehensive guides:
    - API endpoints
    - Token management
 
-3. **[QUICK_START.md](QUICK_START.md)** - Getting started guide
-   - Live URLs
-   - Demo accounts
-   - Feature walkthroughs
-   - Troubleshooting
+3. **[README.md](README.md)** and **[docs/END_TO_END_GUIDE.md](docs/END_TO_END_GUIDE.md)** - Setup and usage guides
+  - Local stack startup
+  - Demo accounts
+  - Real-user and persona walkthroughs
+  - Troubleshooting and runtime notes
 
 ---
 

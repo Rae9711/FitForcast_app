@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
-import { Entry } from '../types/index';
 
 interface EntryComposerProps {
   onSubmit: (type: 'workout' | 'meal', raw_text: string, occurred_at: string) => void;
@@ -8,70 +7,78 @@ interface EntryComposerProps {
 }
 
 export const EntryComposer: React.FC<EntryComposerProps> = ({ onSubmit, isLoading = false }) => {
-  const { register, handleSubmit, reset, watch } = useForm({
+  const { register, handleSubmit, reset, watch, setValue } = useForm({
     defaultValues: {
       type: 'workout' as 'workout' | 'meal',
       raw_text: '',
-      occurred_at: new Date().toISOString().split('T')[0],
+      occurred_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16),
     },
   });
 
-  const watchType = watch('type');
+  const selectedType = watch('type');
 
-  const onSubmitForm = handleSubmit((data) => {
-    const occurredAt = new Date(data.occurred_at).toISOString();
-    onSubmit(data.type, data.raw_text, occurredAt);
-    reset();
+  const submit = handleSubmit((values) => {
+    onSubmit(values.type, values.raw_text, new Date(values.occurred_at).toISOString());
+    reset({
+      type: values.type,
+      raw_text: '',
+      occurred_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16),
+    });
   });
 
   return (
-    <form onSubmit={onSubmitForm} className="space-y-6">
+    <form onSubmit={submit} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Entry Type
-        </label>
-        <select
-          {...register('type')}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm border p-2"
-        >
-          <option value="workout">Workout</option>
-          <option value="meal">Meal</option>
-        </select>
+        <div className="text-sm font-medium text-slate-700">Type</div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setValue('type', 'workout')}
+            className={`rounded-2xl border px-4 py-4 text-left transition ${selectedType === 'workout' ? 'border-sky-500 bg-sky-50 text-sky-900' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
+          >
+            <div className="text-sm font-semibold uppercase tracking-wide">Workout</div>
+            <div className="mt-1 text-sm">Runs, lifts, classes, recovery sessions, or anything training-related.</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setValue('type', 'meal')}
+            className={`rounded-2xl border px-4 py-4 text-left transition ${selectedType === 'meal' ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}
+          >
+            <div className="text-sm font-semibold uppercase tracking-wide">Meal</div>
+            <div className="mt-1 text-sm">Breakfast, lunch, dinner, snack, post-workout fuel, or skipped-meal context.</div>
+          </button>
+        </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          {watchType === 'workout' ? 'Describe your workout' : 'Describe your meal'}
-        </label>
+        <label className="block text-sm font-medium text-slate-700">Activity description</label>
         <textarea
           {...register('raw_text', { required: true })}
-          placeholder={
-            watchType === 'workout'
-              ? 'e.g., 5km morning run, felt strong'
-              : 'e.g., Grilled chicken with vegetables'
-          }
           rows={4}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm border p-2"
+          placeholder={selectedType === 'workout' ? 'Morning run: 6am, 5 miles, easy pace' : 'Breakfast: oatmeal with berries and almonds'}
+          className="mt-2 block w-full rounded-2xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          When did this happen?
-        </label>
+        <label className="block text-sm font-medium text-slate-700">When did this occur?</label>
         <input
-          type="date"
-          {...register('occurred_at')}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm border p-2"
+          type="datetime-local"
+          {...register('occurred_at', { required: true })}
+          className="mt-2 block w-full rounded-2xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none"
         />
       </div>
 
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-primary hover:bg-blue-600 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-md transition"
+        className="w-full rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-400"
       >
-        {isLoading ? 'Saving...' : 'Log Entry'}
+        {isLoading ? 'Saving entry...' : 'Continue to feelings'}
       </button>
     </form>
   );

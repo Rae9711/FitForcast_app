@@ -4,6 +4,7 @@
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    "jsx": "react-jsx",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -26,7 +27,7 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["../FitForcast_app/stream-2-frontend/src"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist", "tests"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

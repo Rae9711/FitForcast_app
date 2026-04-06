@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 
 interface FeelingCaptureProps {
@@ -13,17 +13,53 @@ interface FeelingCaptureProps {
   isLoading?: boolean;
 }
 
-export const FeelingCapture: React.FC<FeelingCaptureProps> = ({
-  onSubmit,
-  when,
-  isLoading = false,
-}) => {
-  const { register, handleSubmit, watch } = useForm({
+const moodLabels = ['Low', 'Low', 'Steady', 'Good', 'Excellent'];
+const energyLabels = ['Drained', 'Low', 'Stable', 'Ready', 'Charged'];
+const stressLabels = ['Calm', 'Light', 'Managed', 'High', 'Very high'];
+
+type FormValues = {
+  valence: string;
+  energy: string;
+  stress: string;
+  notes: string;
+};
+
+const ScaleField = ({
+  label,
+  iconStart,
+  iconEnd,
+  value,
+  descriptor,
+  register,
+  name,
+}: {
+  label: string;
+  iconStart: string;
+  iconEnd: string;
+  value: string;
+  descriptor: string;
+  register: ReturnType<typeof useForm<FormValues>>['register'];
+  name: keyof FormValues;
+}) => (
+  <div>
+    <div className="flex items-center justify-between text-sm font-medium text-slate-700">
+      <span>{label}</span>
+      <span className="text-slate-500">{descriptor} ({value}/5)</span>
+    </div>
+    <div className="mt-3 flex items-center gap-3">
+      <span className="text-xl">{iconStart}</span>
+      <input type="range" min="1" max="5" step="1" {...register(name)} className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-sky-600" />
+      <span className="text-xl">{iconEnd}</span>
+    </div>
+  </div>
+);
+
+export const FeelingCapture: React.FC<FeelingCaptureProps> = ({ onSubmit, when, isLoading = false }) => {
+  const { register, handleSubmit, watch } = useForm<FormValues>({
     defaultValues: {
-      // Backend expects 1–5 integers; keep UI sliders but map their values.
       valence: '3',
       energy: '3',
-      stress: '3',
+      stress: '2',
       notes: '',
     },
   });
@@ -32,108 +68,69 @@ export const FeelingCapture: React.FC<FeelingCaptureProps> = ({
   const energy = watch('energy');
   const stress = watch('stress');
 
-  const onSubmitForm = handleSubmit((data) => {
-    // Ensure we always send 1–5 integers to the backend.
-    const clampToScale = (raw: string) => {
-      const n = parseInt(raw, 10);
-      if (Number.isNaN(n)) return 3;
-      return Math.min(5, Math.max(1, n));
-    };
-
+  const submit = handleSubmit((values) => {
     onSubmit({
       when,
-      valence: clampToScale(data.valence),
-      energy: clampToScale(data.energy),
-      stress: clampToScale(data.stress),
-      notes: data.notes || undefined,
+      valence: Number(values.valence),
+      energy: Number(values.energy),
+      stress: Number(values.stress),
+      notes: values.notes || undefined,
     });
   });
 
-  const getValenceLabel = (val: number) => {
-    if (val < -50) return 'Very Negative';
-    if (val < -20) return 'Negative';
-    if (val < 20) return 'Neutral';
-    if (val < 50) return 'Positive';
-    return 'Very Positive';
-  };
-
   return (
-    <form onSubmit={onSubmitForm} className="space-y-6">
-      <h3 className="text-lg font-semibold text-gray-900">
-        {when === 'pre' ? 'How are you feeling before?' : 'How are you feeling after?'}
-      </h3>
-
+    <form onSubmit={submit} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Mood: {getValenceLabel(parseInt(valence))}
-        </label>
-        <input
-          type="range"
-          min="1"
-          max="5"
-          step="1"
-          {...register('valence')}
-          className="mt-2 w-full accent-primary"
-        />
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>Very Sad</span>
-          <span>Neutral</span>
-          <span>Very Happy</span>
-        </div>
+        <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Feeling capture</p>
+        <h3 className="mt-2 text-xl font-semibold text-slate-900">
+          {when === 'pre' ? 'How did you feel before?' : 'How did you feel after?'}
+        </h3>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Energy Level: {parseInt(energy)} / 5
-        </label>
-        <input
-          type="range"
-          min="1"
-          max="5"
-          step="1"
-          {...register('energy')}
-          className="mt-2 w-full accent-primary"
-        />
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>Exhausted</span>
-          <span>Energized</span>
-        </div>
-      </div>
+      <ScaleField
+        label="Mood"
+        iconStart="😐"
+        iconEnd="😊"
+        value={valence}
+        descriptor={moodLabels[Number(valence) - 1]}
+        register={register}
+        name="valence"
+      />
+      <ScaleField
+        label="Energy"
+        iconStart="🔋"
+        iconEnd="⚡"
+        value={energy}
+        descriptor={energyLabels[Number(energy) - 1]}
+        register={register}
+        name="energy"
+      />
+      <ScaleField
+        label="Stress"
+        iconStart="😌"
+        iconEnd="😰"
+        value={stress}
+        descriptor={stressLabels[Number(stress) - 1]}
+        register={register}
+        name="stress"
+      />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Stress Level: {parseInt(stress)} / 5
-        </label>
-        <input
-          type="range"
-          min="1"
-          max="5"
-          step="1"
-          {...register('stress')}
-          className="mt-2 w-full accent-danger"
-        />
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>Relaxed</span>
-          <span>Very Stressed</span>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Notes (optional)</label>
+        <label className="block text-sm font-medium text-slate-700">Notes</label>
         <textarea
           {...register('notes')}
-          placeholder="Add any additional notes..."
           rows={3}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm border p-2"
+          placeholder={when === 'pre' ? 'Ready to go, decent sleep, hungry, rushed, etc.' : 'Felt strong, settled down, still stressed, energized, etc.'}
+          className="mt-2 block w-full rounded-2xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none"
         />
       </div>
 
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-secondary hover:bg-purple-600 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded-md transition"
+        className="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
       >
-        {isLoading ? 'Saving...' : 'Record Feeling'}
+        {isLoading ? 'Saving...' : when === 'pre' ? 'Save pre-entry feeling' : 'Save post-entry feeling'}
       </button>
     </form>
   );

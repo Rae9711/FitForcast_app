@@ -1,107 +1,138 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppProvider';
 import { apiClient } from '../api/client';
 import { EntryList } from '../components/EntryList';
+import { useAppContext } from '../context/AppProvider';
 import { Entry } from '../types/index';
+
+type EntryFilter = 'all' | 'workout' | 'meal';
+type SortOrder = 'newest' | 'oldest';
 
 export const History: React.FC = () => {
   const navigate = useNavigate();
   const { userId, entries, setEntries, setLoading, setError } = useAppContext();
+  const [filter, setFilter] = useState<EntryFilter>('all');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     const loadEntries = async () => {
       try {
         setLoading(true);
-        const fetchedEntries = await apiClient.getEntries(userId, 100);
+        const fetchedEntries = await apiClient.getEntries(userId, 120);
         setEntries(fetchedEntries);
-      } catch (err) {
+      } catch (error) {
         setError('Failed to load entries');
-        console.error(err);
+        console.error(error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadEntries();
-  }, [userId]);
+    if (userId) {
+      loadEntries();
+    }
+  }, [setEntries, setError, setLoading, userId]);
 
-  const handleSelectEntry = (entry: Entry) => {
-    console.log('Selected entry:', entry);
-    // Could navigate to entry details page in the future
-  };
+  const filteredEntries = useMemo(() => {
+    const normalizedStart = startDate ? new Date(`${startDate}T00:00:00`).getTime() : null;
+    const normalizedEnd = endDate ? new Date(`${endDate}T23:59:59`).getTime() : null;
+
+    return [...entries]
+      .filter((entry) => (filter === 'all' ? true : entry.type === filter))
+      .filter((entry) => {
+        const time = new Date(entry.occurred_at).getTime();
+        if (normalizedStart && time < normalizedStart) {
+          return false;
+        }
+        if (normalizedEnd && time > normalizedEnd) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) => {
+        const delta = new Date(right.occurred_at).getTime() - new Date(left.occurred_at).getTime();
+        return sortOrder === 'newest' ? delta : -delta;
+      });
+  }, [endDate, entries, filter, sortOrder, startDate]);
 
   const handleDeleteEntry = async (entryId: string) => {
     try {
       setLoading(true);
       await apiClient.deleteEntry(entryId);
-      setEntries(entries.filter((e) => e.id !== entryId));
-    } catch (err) {
+      setEntries(entries.filter((entry) => entry.id !== entryId));
+    } catch (error) {
       setError('Failed to delete entry');
-      console.error(err);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSelectEntry = (entry: Entry) => {
+    console.log('Selected entry', entry.id);
+  };
+
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Your History</h1>
-          <p className="text-gray-600 mt-2">
-            Track all your logged workouts and meals
-          </p>
+          <h1 className="text-3xl font-bold text-slate-900">History</h1>
+          <p className="mt-2 text-slate-500">Filter and review the activity patterns that are driving your current insight set.</p>
         </div>
         <button
           onClick={() => navigate('/log')}
-          className="bg-primary hover:bg-blue-600 text-white font-bold py-2 px-6 rounded"
+          className="rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
         >
-          + New Entry
+          Log another entry
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <EntryList
-          entries={entries}
-          onSelectEntry={handleSelectEntry}
-          onDeleteEntry={handleDeleteEntry}
-        />
-      </div>
-
-      {/* Stats Footer */}
-      {entries.length > 0 && (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-primary mb-1">
-              {entries.length}
-            </div>
-            <div className="text-sm text-gray-600">Total Entries</div>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-success mb-1">
-              {entries.filter((e) => e.type === 'workout').length}
-            </div>
-            <div className="text-sm text-gray-600">Workouts</div>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4 text-center">
-            <div className="text-2xl font-bold text-secondary mb-1">
-              {entries.filter((e) => e.type === 'meal').length}
-            </div>
-            <div className="text-sm text-gray-600">Meals</div>
-          </div>
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-4">
+          <label className="text-sm text-slate-600">
+            Type
+            <select value={filter} onChange={(event) => setFilter(event.target.value as EntryFilter)} className="mt-2 block w-full rounded-2xl border border-slate-300 px-3 py-2 text-slate-900">
+              <option value="all">All</option>
+              <option value="workout">Workouts</option>
+              <option value="meal">Meals</option>
+            </select>
+          </label>
+          <label className="text-sm text-slate-600">
+            Sort
+            <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value as SortOrder)} className="mt-2 block w-full rounded-2xl border border-slate-300 px-3 py-2 text-slate-900">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+            </select>
+          </label>
+          <label className="text-sm text-slate-600">
+            Start date
+            <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="mt-2 block w-full rounded-2xl border border-slate-300 px-3 py-2 text-slate-900" />
+          </label>
+          <label className="text-sm text-slate-600">
+            End date
+            <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="mt-2 block w-full rounded-2xl border border-slate-300 px-3 py-2 text-slate-900" />
+          </label>
         </div>
-      )}
+      </section>
 
-      {/* Back Button */}
-      <div className="mt-8">
-        <button
-          onClick={() => navigate('/')}
-          className="text-gray-600 hover:text-gray-800"
-        >
-          ← Back to Home
-        </button>
-      </div>
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-sm uppercase tracking-wide text-slate-500">Visible entries</div>
+          <div className="mt-3 text-3xl font-semibold text-slate-900">{filteredEntries.length}</div>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-sm uppercase tracking-wide text-slate-500">Workouts</div>
+          <div className="mt-3 text-3xl font-semibold text-slate-900">{filteredEntries.filter((entry) => entry.type === 'workout').length}</div>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-sm uppercase tracking-wide text-slate-500">Meals</div>
+          <div className="mt-3 text-3xl font-semibold text-slate-900">{filteredEntries.filter((entry) => entry.type === 'meal').length}</div>
+        </div>
+      </section>
+
+      <EntryList entries={filteredEntries} onDeleteEntry={handleDeleteEntry} onSelectEntry={handleSelectEntry} />
     </div>
   );
 };

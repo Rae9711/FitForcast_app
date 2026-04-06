@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { allowDevAuthBypass, jwtAudience, jwtIssuer, jwtSecret } from '../config';
+import { incrementAuthFailure } from './monitoring';
 
 /**
  * Auth Middleware
@@ -21,8 +23,6 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fitforecast-dev-secret-change-in-production';
-
 interface JwtPayload {
   userId: string;
   email: string;
@@ -43,9 +43,13 @@ const verifyToken = (req: Request): string | null => {
 
   try {
     const token = parts[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const decoded = jwt.verify(token, jwtSecret, {
+      issuer: jwtIssuer,
+      audience: jwtAudience,
+    }) as JwtPayload;
     return decoded.userId;
   } catch (error) {
+    incrementAuthFailure();
     return null;
   }
 };
@@ -60,13 +64,14 @@ const inferUserId = (req: Request): string => {
 
   // 2. Try x-user-id header (for development/testing)
   const headerUserId = req.header('x-user-id');
-  if (headerUserId) {
+  if (allowDevAuthBypass && headerUserId) {
     return headerUserId;
   }
 
   // 3. Fallback to environment config (for unauthenticated dev flows)
   const fallback = process.env.DEFAULT_USER_ID;
-  if (!fallback) {
+  if (!allowDevAuthBypass || !fallback) {
+    incrementAuthFailure();
     throw new Error('Authentication required. Please provide a valid token.');
   }
   return fallback;
@@ -86,6 +91,7 @@ export const attachUser = (req: Request, res: Response, next: NextFunction) => {
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   const tokenUserId = verifyToken(req);
   if (!tokenUserId) {
+    incrementAuthFailure();
     return res.status(401).json({
       message: 'Authentication required',
       detail: 'Please provide a valid JWT token',

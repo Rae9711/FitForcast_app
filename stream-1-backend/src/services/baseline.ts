@@ -27,12 +27,14 @@ type MetricDefinition = {
 const METRIC_DEFINITIONS: MetricDefinition[] = [
   { scope: 'workout', metric: 'post_energy', entryType: 'workout', field: 'energy' },
   { scope: 'workout', metric: 'post_valence', entryType: 'workout', field: 'valence' },
+  { scope: 'workout', metric: 'post_stress', entryType: 'workout', field: 'stress' },
   { scope: 'meal', metric: 'post_energy', entryType: 'meal', field: 'energy' },
-  { scope: 'meal', metric: 'post_valence', entryType: 'meal', field: 'valence' }
+  { scope: 'meal', metric: 'post_valence', entryType: 'meal', field: 'valence' },
+  { scope: 'meal', metric: 'post_stress', entryType: 'meal', field: 'stress' }
 ];
 
 // Supported rolling window lengths (days)
-export const BASELINE_WINDOWS = [7, 30, 365] as const;
+export const BASELINE_WINDOWS = [7, 30, 90, 365] as const;
 
 
 // Shape of the trends endpoint response: combines baselines and recent entries
@@ -111,10 +113,15 @@ export const getTrendSnapshot = async (userId: string, windowDays: number): Prom
       orderBy: { metric: 'asc' }
     }),
     prisma.logEntry.findMany({
-      where: { userId },
+      where: {
+        userId,
+        occurredAt: {
+          gte: getWindowStart(windowDays)
+        }
+      },
       include: { feelings: true },
-      orderBy: { occurredAt: 'desc' },
-      take: 15
+      orderBy: { occurredAt: 'asc' },
+      take: Math.max(windowDays, 45)
     })
   ]);
 
@@ -209,13 +216,17 @@ const toApiBaseline = (baseline: BaselineMetric) => ({
  * Helper: Summarizes recent entries for charting (focuses on post-activity feelings).
  */
 const toRecentEntry = (entry: LogEntry & { feelings: FeelingEntry[] }) => {
+  const preFeeling = entry.feelings.find((feeling) => feeling.when === 'pre');
   const postFeeling = entry.feelings.find((feeling) => feeling.when === 'post');
   return {
     id: entry.id,
     entered: entry.occurredAt.toISOString(),
     type: entry.type,
+    pre_energy: preFeeling?.energy ?? null,
+    pre_valence: preFeeling?.valence ?? null,
+    pre_stress: preFeeling?.stress ?? null,
     post_energy: postFeeling?.energy ?? null,
     post_valence: postFeeling?.valence ?? null,
-    stress: postFeeling?.stress ?? null
+    post_stress: postFeeling?.stress ?? null
   };
 };

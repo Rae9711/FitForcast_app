@@ -10,10 +10,11 @@ The Backend is the data and compute foundation for FitForecast. It owns the REST
 
 ## Scope (MVP)
 
-- **REST API:** Endpoints for logging entries, capturing feelings, retrieving trends, and listing insights.
+- **REST API:** Endpoints for logging entries, capturing feelings, retrieving trends, listing insights, and generating personalized forecasts.
 - **Database:** PostgreSQL schema with Prisma ORM for User, LogEntry, FeelingEntry, ParsedEntry, BaselineMetric, and Insight entities.
 - **Baseline Computation:** Rolling 7/30/365-day aggregations on entry submission, per user and per metric.
 - **Deterministic Insights Engine:** Rule evaluation service that fires insights based on baseline deltas.
+- **Personalized Prediction Engine:** Hybrid per-user plus cross-user forecasting that uses rolling 7/30/90/180-day heuristics, EMA/Bayesian scoring, logistic regression, and boosted stump ensembles.
 - **Validation & Error Handling:** Input validation, error responses, and graceful degradation.
 
 ## Key Deliverables
@@ -135,6 +136,16 @@ Insight
     ]
     ```
 
+#### Personalized Forecasts
+- **GET /predictions** — Generate a hybrid personalized forecast bundle for the user's next workout
+  - Query: `?user_id=X&planned_hour=7&workout_kind=cardio&include_breakfast=true&include_protein_recovery_meal=true&pre_energy=3&pre_stress=2`
+  - Response:
+    - `heuristics`: rolling 7/30/90/180-day personalized timing, mood, fueling, and consistency signals with confidence
+    - `defaultScenario`: expected post-workout energy, post-workout stress, good-session likelihood, and next-day recovery quality
+    - `scenarioComparisons`: alternative timing/fueling what-if scenarios
+    - `modelNotes`: per-user vs global weighting and calibration note
+    - `narrative`: AI-personalized coaching copy when an upstream LLM is configured, otherwise deterministic fallback text
+
 ### 3. Baseline Computation Service
 
 Runs asynchronously after each FeelingEntry is created. Computes per-user, per-metric rolling windows.
@@ -142,6 +153,15 @@ Runs asynchronously after each FeelingEntry is created. Computes per-user, per-m
 ### 4. Insights Engine
 
 Deterministic rule evaluator integrated with baseline metrics.
+
+### 5. Personalized Forecast Engine
+
+The prediction service adds four layers on top of the baseline system:
+
+- **Stage 1:** Personalized heuristics over 7/30/90/180-day windows with recency weighting and confidence thresholds
+- **Stage 2:** Per-user predictive scoring for post-workout energy, post-workout stress, good-session likelihood, and next-day recovery quality using EMA, Bayesian smoothing, logistic regression, and boosted stumps
+- **Stage 3:** Cross-user plus per-user hybrid blending with calibration so the model gets more personal as each user logs more data
+- **Stage 4:** Optional AI narrative personalization for forecast summaries and next-step coaching
 
 ## Tech Stack
 
@@ -162,13 +182,16 @@ stream-1-backend/
 │   │   ├── entries.ts
 │   │   ├── feelings.ts
 │   │   ├── trends.ts
-│   │   └── insights.ts
+│   │   ├── insights.ts
+│   │   └── predictions.ts
 │   ├── db/
 │   │   ├── prisma.ts
 │   │   └── schema.prisma
 │   ├── services/
 │   │   ├── baseline.ts
-│   │   └── insights.ts
+│   │   ├── insights.ts
+│   │   ├── llm.ts
+│   │   └── predictions.ts
 │   ├── middleware/
 │   │   ├── auth.ts
 │   │   └── validation.ts
@@ -192,7 +215,7 @@ stream-1-backend/
 
 ## Integration Points
 
-- **Stream 2 (Frontend):** Consumes all `/entries`, `/feelings`, `/trends`, `/insights`
+- **Stream 2 (Frontend):** Consumes all `/entries`, `/feelings`, `/trends`, `/insights`, `/predictions`
 - **Stream 3 (Analytics):** Receives baseline data, returns insight objects
 - **Stream 4 (Integration):** Optional NLP enrichment of ParsedEntry
 
@@ -215,6 +238,25 @@ Set environment variables (example):
 
 ```bash
 export DATABASE_URL="postgresql://user:pass@localhost:5432/fitforecast"
+export JWT_SECRET="replace-me"
+export INSIGHTS_LLM_PROVIDER="off" # off | openai | ollama | jac
+```
+
+Optional LLM provider variables:
+
+```bash
+# OpenAI-compatible
+export OPENAI_API_KEY="..."
+export OPENAI_BASE_URL="https://api.openai.com/v1"
+export OPENAI_MODEL="gpt-4.1-mini"
+
+# Ollama
+export OLLAMA_BASE_URL="http://127.0.0.1:11434"
+export OLLAMA_MODEL="llama3.1"
+
+# Jac microservice bridge
+export JAC_LLM_URL="http://127.0.0.1:8787"
+export JAC_LLM_API_KEY="change-me-if-exposed"
 ```
 
 Install and run migrations, then seed sample data (seed is configurable):
@@ -231,6 +273,8 @@ Start the server:
 ```bash
 npm start
 ```
+
+When `INSIGHTS_LLM_PROVIDER=jac`, the backend sends deterministic insight drafts to the Stream 4 Jac service and falls back to deterministic copy if that service is unavailable.
 
 Run tests and coverage locally:
 

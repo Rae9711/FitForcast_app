@@ -1,6 +1,27 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '../api/client';
 
+const AUTH_TOKEN_KEY = 'authToken';
+
+const decodeJwtExpiry = (tokenValue: string) => {
+  try {
+    const [, payload] = tokenValue.split('.');
+    if (!payload) {
+      return null;
+    }
+
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as { exp?: number };
+    return typeof decoded.exp === 'number' ? decoded.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+};
+
+const isExpiredToken = (tokenValue: string) => {
+  const expiryMs = decodeJwtExpiry(tokenValue);
+  return expiryMs !== null && expiryMs <= Date.now();
+};
+
 interface User {
   id: string;
   email: string;
@@ -40,8 +61,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Load token from localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('authToken');
+    const storedToken = localStorage.getItem(AUTH_TOKEN_KEY);
     if (storedToken) {
+      if (isExpiredToken(storedToken)) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        setIsLoading(false);
+        return;
+      }
       setToken(storedToken);
       // Verify token and load user info
       fetchCurrentUser(storedToken);
@@ -67,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Failed to fetch current user:', error);
       // Clear invalid token
-      localStorage.removeItem('authToken');
+      localStorage.removeItem(AUTH_TOKEN_KEY);
       setToken(null);
     } finally {
       setIsLoading(false);
@@ -92,7 +118,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const data = await response.json();
       setToken(data.token);
       setUser(data.user);
-      localStorage.setItem('authToken', data.token);
+      localStorage.setItem(AUTH_TOKEN_KEY, data.token);
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -117,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const data = await response.json();
       setToken(data.token);
       setUser(data.user);
-      localStorage.setItem('authToken', data.token);
+      localStorage.setItem(AUTH_TOKEN_KEY, data.token);
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
@@ -127,7 +153,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('authToken');
+    localStorage.removeItem(AUTH_TOKEN_KEY);
   };
 
   const value: AuthContextType = {
