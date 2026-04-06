@@ -2,7 +2,11 @@ import axios, { AxiosInstance } from 'axios';
 import { Entry, FeelingEntry, Insight, TrendsData, TrendDataPoint } from '../types/index';
 import { mockApiClient } from './mocks';
 
+<<<<<<< HEAD
+const USE_MOCKS = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+=======
 const USE_MOCKS = false; // Disable mocks - use real API with seeded data
+>>>>>>> 9587a04636be9f89c51c8b04bb087a21b8b31c8e
 
 export interface IApiClient {
   createEntry(

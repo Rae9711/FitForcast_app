@@ -24,7 +24,11 @@ type AppAction =
   | { type: 'CLEAR_ERROR' };
 
 const initialState: AppState = {
+<<<<<<< HEAD
+  userId: import.meta.env.VITE_DEFAULT_USER_ID || '00000000-0000-0000-0000-000000000001',
+=======
   userId: '',
+>>>>>>> 9587a04636be9f89c51c8b04bb087a21b8b31c8e
   entries: [],
   insights: [],
   trendsData: null,

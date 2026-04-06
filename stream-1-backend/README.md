@@ -182,6 +182,7 @@ stream-1-backend/
 
 ## Success Criteria
 
+<!-- Success Criteria Checklist -->
 - [ ] API endpoints respond in <200ms (p95) with valid JSON
 - [ ] Baseline calculations complete within 5 seconds on 100+ entries
 - [ ] Sample seed data available: 3 test users, 50+ entries each
@@ -199,6 +200,7 @@ See [../docs/INTEGRATION_CONTRACT.md](../docs/INTEGRATION_CONTRACT.md) for detai
 
 ## Next Steps
 
+<!-- Next Steps Checklist -->
 1. Scaffold Node/TypeScript project
 2. Setup PostgreSQL with Prisma
 3. Define schema in `schema.prisma`
