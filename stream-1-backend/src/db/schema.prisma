@@ -56,6 +56,25 @@ enum BaselineScope {
   mood
 }
 
+enum GoalMetric {
+  weekly_workouts
+  active_days
+  post_workout_energy
+  post_workout_stress
+  recovery_quality
+}
+
+enum GoalDirection {
+  at_least
+  at_most
+}
+
+enum GoalStatus {
+  active
+  completed
+  archived
+}
+
 /// Users represent FitForecast accounts and own the downstream records.
 model User {
   id              String           @id @default(uuid())
@@ -67,6 +86,7 @@ model User {
   entries         LogEntry[]
   baselineMetrics BaselineMetric[]
   insights        Insight[]
+  goals           Goal[]
 }
 
 /// LogEntry stores the raw text and metadata submitted by the user.
@@ -143,4 +163,21 @@ model Insight {
 
   @@index([userId, isActive])
   @@unique([userId, type, ruleName], name: "userId_type_ruleName")
+}
+
+model Goal {
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  title       String
+  metric      GoalMetric
+  direction   GoalDirection
+  targetValue Float
+  windowDays  Int
+  note        String?
+  status      GoalStatus    @default(active)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId, status])
 }

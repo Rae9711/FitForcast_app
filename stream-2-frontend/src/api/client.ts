@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { Entry, FeelingEntry, Insight, PredictionBundle, TrendDataPoint, TrendMetricKey, TrendsData } from '../types/index';
+import { AnalyticsBundle, Entry, FeelingEntry, Goal, GoalDraft, GoalStatus, Insight, PredictionBundle, TrendDataPoint, TrendMetricKey, TrendsData } from '../types/index';
 import { mockApiClient } from './mocks';
 
 const USE_MOCKS = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
@@ -101,6 +101,38 @@ const toInsight = (insight: BackendInsight): Insight => {
 };
 
 type BackendPredictionBundle = PredictionBundle;
+
+type BackendGoal = {
+  id: string;
+  title: string;
+  metric: Goal['metric'];
+  direction: Goal['direction'];
+  target_value: number;
+  current_value: number;
+  progress: number;
+  window_days: number;
+  note?: string | null;
+  status: GoalStatus;
+  is_met: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+const normalizeGoal = (goal: BackendGoal): Goal => ({
+  id: goal.id,
+  title: goal.title,
+  metric: goal.metric,
+  direction: goal.direction,
+  targetValue: goal.target_value,
+  currentValue: goal.current_value,
+  progress: goal.progress,
+  windowDays: goal.window_days,
+  note: goal.note ?? null,
+  status: goal.status,
+  isMet: goal.is_met,
+  createdAt: goal.created_at,
+  updatedAt: goal.updated_at,
+});
 
 const buildTrendData = (
   snapshot: BackendTrendSnapshot,
@@ -226,6 +258,10 @@ export interface IApiClient {
   getTrends(userId: string, windowDays?: number, metric?: TrendMetricKey): Promise<TrendsData>;
   getInsights(userId: string): Promise<Insight[]>;
   getPredictions(userId: string): Promise<PredictionBundle>;
+  getAnalytics(userId: string, windowDays?: number): Promise<AnalyticsBundle>;
+  getGoals(): Promise<Goal[]>;
+  createGoal(input: GoalDraft): Promise<Goal>;
+  updateGoal(goalId: string, input: Partial<GoalDraft> & { status?: GoalStatus }): Promise<Goal>;
   dismissInsight(insightId: string): Promise<void>;
   deleteEntry(entryId: string): Promise<void>;
 }
@@ -376,6 +412,62 @@ class ApiClient implements IApiClient {
       params: userId ? { user_id: userId } : undefined,
     });
     return response.data;
+  }
+
+  async getAnalytics(userId: string, windowDays?: number): Promise<AnalyticsBundle> {
+    if (USE_MOCKS) {
+      return mockApiClient.getAnalytics(userId, windowDays);
+    }
+
+    const response = await this.axiosInstance.get<AnalyticsBundle>('/analytics', {
+      params: {
+        ...(userId ? { user_id: userId } : {}),
+        ...(windowDays ? { window_days: windowDays } : {}),
+      },
+    });
+    return response.data;
+  }
+
+  async getGoals(): Promise<Goal[]> {
+    if (USE_MOCKS) {
+      return mockApiClient.getGoals();
+    }
+
+    const response = await this.axiosInstance.get<BackendGoal[]>('/goals');
+    return response.data.map(normalizeGoal);
+  }
+
+  async createGoal(input: GoalDraft): Promise<Goal> {
+    if (USE_MOCKS) {
+      return mockApiClient.createGoal(input);
+    }
+
+    const response = await this.axiosInstance.post<BackendGoal>('/goals', {
+      title: input.title,
+      metric: input.metric,
+      direction: input.direction,
+      target_value: input.targetValue,
+      window_days: input.windowDays,
+      note: input.note,
+    });
+    return normalizeGoal(response.data);
+  }
+
+  async updateGoal(goalId: string, input: Partial<GoalDraft> & { status?: GoalStatus }): Promise<Goal> {
+    if (USE_MOCKS) {
+      return mockApiClient.updateGoal(goalId, input);
+    }
+
+    const response = await this.axiosInstance.patch<BackendGoal>(`/goals/${goalId}`, {
+      title: input.title,
+      metric: input.metric,
+      direction: input.direction,
+      target_value: input.targetValue,
+      window_days: input.windowDays,
+      note: input.note,
+      status: input.status,
+    });
+    return normalizeGoal(response.data);
   }
 
   async dismissInsight(insightId: string): Promise<void> {

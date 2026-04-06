@@ -9,6 +9,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ def
 const LogEntry = lazy(() => import('./pages/LogEntry').then((module) => ({ default: module.LogEntry })));
 const History = lazy(() => import('./pages/History').then((module) => ({ default: module.History })));
 const Trends = lazy(() => import('./pages/Trends').then((module) => ({ default: module.Trends })));
+const Analytics = lazy(() => import('./pages/Analytics').then((module) => ({ default: module.Analytics })));
 const LoginPage = lazy(() => import('./pages/Login').then((module) => ({ default: module.LoginPage })));
 const SignupPage = lazy(() => import('./pages/Signup').then((module) => ({ default: module.SignupPage })));
 
@@ -56,6 +57,11 @@ function AppContent() {
                 <li>
                   <Link to="/history" className="text-gray-700 hover:text-primary transition">
                     History
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/analytics" className="text-gray-700 hover:text-primary transition">
+                    Analytics
                   </Link>
                 </li>
                 <li>
@@ -107,6 +113,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <History />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <Analytics />
                 </ProtectedRoute>
               }
             />

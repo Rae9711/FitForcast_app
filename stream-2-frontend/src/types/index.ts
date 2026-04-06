@@ -115,6 +115,99 @@ export interface ForecastScenario {
   };
 }
 
+export interface AnalyticsEvidence {
+  label: string;
+  value: string | number;
+}
+
+export interface AnalyticsCorrelation {
+  id: string;
+  title: string;
+  summary: string;
+  relationship: 'positive' | 'negative';
+  strength: number;
+  confidence: number;
+  confidenceLabel: 'emerging' | 'moderate' | 'strong';
+  sampleCount: number;
+  recommendation: string;
+  evidence: AnalyticsEvidence[];
+}
+
+export interface PredictiveInsight {
+  id: string;
+  title: string;
+  summary: string;
+  severity: 'watch' | 'stable' | 'opportunity';
+  confidence: number;
+  confidenceLabel: 'emerging' | 'moderate' | 'strong';
+  expectedWindow: string;
+  recommendation: string;
+  evidence: AnalyticsEvidence[];
+}
+
+export interface RecurringPattern {
+  id: string;
+  title: string;
+  summary: string;
+  period: 'daily' | 'weekly' | 'monthly';
+  confidence: number;
+  confidenceLabel: 'emerging' | 'moderate' | 'strong';
+  sampleCount: number;
+  recommendation: string;
+  evidence: AnalyticsEvidence[];
+}
+
+export interface AnalyticsBundle {
+  userId: string;
+  generatedAt: string;
+  windowDays: number;
+  summary: {
+    trackedDays: number;
+    loggedWorkouts: number;
+    completeWorkoutSamples: number;
+    latestWorkoutAt: string | null;
+  };
+  correlations: AnalyticsCorrelation[];
+  predictiveInsights: PredictiveInsight[];
+  recurringPatterns: RecurringPattern[];
+}
+
+export type GoalMetric =
+  | 'weekly_workouts'
+  | 'active_days'
+  | 'post_workout_energy'
+  | 'post_workout_stress'
+  | 'recovery_quality';
+
+export type GoalDirection = 'at_least' | 'at_most';
+
+export type GoalStatus = 'active' | 'completed' | 'archived';
+
+export interface Goal {
+  id: string;
+  title: string;
+  metric: GoalMetric;
+  direction: GoalDirection;
+  targetValue: number;
+  currentValue: number;
+  progress: number;
+  windowDays: number;
+  note?: string | null;
+  status: GoalStatus;
+  isMet: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GoalDraft {
+  title: string;
+  metric: GoalMetric;
+  direction: GoalDirection;
+  targetValue: number;
+  windowDays: number;
+  note?: string;
+}
+
 export interface PredictionBundle {
   userId: string;
   generatedAt: string;

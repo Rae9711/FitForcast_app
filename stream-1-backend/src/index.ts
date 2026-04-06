@@ -10,6 +10,8 @@ import feelingsRouter from './api/feelings';
 import trendsRouter from './api/trends';
 import insightsRouter from './api/insights';
 import predictionsRouter from './api/predictions';
+import analyticsRouter from './api/analytics';
+import goalsRouter from './api/goals';
 // Shared middleware and utilities keep cross-cutting concerns centralized.
 import { attachUser } from './middleware/auth';
 import { allowedCorsOrigins, jsonBodyLimit } from './config';
@@ -71,6 +73,8 @@ app.use('/entries/:entryId/feelings', feelingsRouter);
 app.use('/trends', trendsRouter);
 app.use('/insights', insightsRouter);
 app.use('/predictions', predictionsRouter);
+app.use('/analytics', analyticsRouter);
+app.use('/goals', goalsRouter);
 
 // Serve OpenAPI YAML and host Swagger UI at /docs when available.
 if (swaggerUi) {

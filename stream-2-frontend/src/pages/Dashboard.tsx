@@ -139,7 +139,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-3">
         <button
           onClick={() => navigate('/log')}
           className="rounded-2xl bg-sky-600 px-6 py-5 text-left text-white shadow transition hover:bg-sky-500"
@@ -155,6 +155,14 @@ export const Dashboard: React.FC = () => {
           <div className="text-xs uppercase tracking-[0.3em] text-emerald-100">Quick action</div>
           <div className="mt-2 text-2xl font-semibold">Review your trend lines</div>
           <div className="mt-1 text-sm text-emerald-100">Compare your recent baselines against the last month or quarter.</div>
+        </button>
+        <button
+          onClick={() => navigate('/analytics')}
+          className="rounded-2xl bg-amber-500 px-6 py-5 text-left text-slate-950 shadow transition hover:bg-amber-400"
+        >
+          <div className="text-xs uppercase tracking-[0.3em] text-amber-900">Phase 2</div>
+          <div className="mt-2 text-2xl font-semibold">Open advanced analytics</div>
+          <div className="mt-1 text-sm text-amber-950/80">Inspect correlations, tomorrow-facing predictions, recurring patterns, and tracked goals.</div>
         </button>
       </section>
 

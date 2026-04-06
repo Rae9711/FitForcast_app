@@ -10,6 +10,8 @@ The current MVP is launchable in local development with:
 - baseline and trends analysis
 - deterministic insights with optional AI wording
 - a four-stage personalized prediction system
+- advanced analytics for correlations, recurring patterns, and near-term outlooks
+- goal setting and progress tracking
 - demo personas seeded with realistic historical data
 
 ## What FitForecast Does
@@ -31,6 +33,7 @@ The repository currently supports the full end-to-end MVP flow described in the 
 - dashboard, history, trends, and logging flows
 - insights generation and rendering
 - personalized forecast generation through the new predictions endpoint
+- advanced analytics and goal tracking through dedicated analytics and goals endpoints
 - optional Jac bridge for AI narrative rewriting
 
 Important limitation:
@@ -53,15 +56,17 @@ All demo accounts use the password `password123`.
 
 - Node.js + TypeScript + Express
 - Prisma + PostgreSQL
-- authentication, entries, feelings, insights, trends, predictions
+- authentication, entries, feelings, insights, trends, predictions, analytics, goals
 - deterministic insights engine
 - personalized forecast engine
+- recurring-pattern and correlation analysis engine
 
 ### Stream 2: Frontend
 
 - React 18 + TypeScript + Vite
-- route-based pages for login, signup, dashboard, log entry, history, and trends
+- route-based pages for login, signup, dashboard, log entry, history, trends, and analytics
 - prediction and insight panels wired to the backend
+- analytics workspace with correlation cards, predictive alerts, and goal tracking
 
 ### Stream 3: Analytics
 
@@ -130,6 +135,17 @@ FitForecast now includes a four-stage forecast system:
 4. Stage 4: AI narrative personalization
 
 The backend exposes this through `GET /predictions` and the frontend renders it in the dashboard and trends experience.
+
+### 6. Advanced Analytics and Goal Tracking
+
+FitForecast also now exposes a dedicated Phase 2 analytics layer:
+
+1. correlation analysis between timing, stress, fueling, consistency, and outcomes
+2. predictive alerts for the next session or next day
+3. recurring daily, weekly, and monthly pattern detection
+4. goal creation, completion, and archiving with live progress tracking
+
+The backend exposes this through `GET /analytics`, `GET /goals`, `POST /goals`, and `PATCH /goals/:id`, and the frontend renders it in the Analytics page.
 
 ## Tech Stack
 
@@ -312,6 +328,10 @@ pytest
 - `GET /insights`
 - `GET /trends`
 - `GET /predictions`
+- `GET /analytics`
+- `GET /goals`
+- `POST /goals`
+- `PATCH /goals/:id`
 
 ## Personalized Prediction System
 
@@ -324,6 +344,15 @@ The `/predictions` endpoint returns a forecast bundle that can include:
 - narrative coaching copy with deterministic fallback if no LLM provider is active
 
 This lets the product get more precise as the user logs more entries.
+
+## Phase 2 Analytics System
+
+The new Analytics page and `/analytics` endpoint add four major capabilities:
+
+- explicit correlation analysis for timing, fueling, stress, and consistency signals
+- predictive insights that surface near-term risk or opportunity like "tomorrow might be tough"
+- recurring pattern detection across daily, weekly, and monthly cycles
+- goal setting and progress tracking backed by persisted user goals
 
 ## Documentation Map
 

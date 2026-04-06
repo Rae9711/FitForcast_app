@@ -1,4 +1,4 @@
-import { Entry, FeelingEntry, Insight, PredictionBundle, TrendMetricKey, TrendsData } from '../types/index';
+import { AnalyticsBundle, Entry, FeelingEntry, Goal, GoalDraft, GoalStatus, Insight, PredictionBundle, TrendMetricKey, TrendsData } from '../types/index';
 
 export const mockUser = {
   id: 'user-123',
@@ -231,6 +231,103 @@ export const mockPredictions: PredictionBundle = {
   },
 };
 
+export const mockAnalytics: AnalyticsBundle = {
+  userId: mockUser.id,
+  generatedAt: new Date().toISOString(),
+  windowDays: 30,
+  summary: {
+    trackedDays: 24,
+    loggedWorkouts: 18,
+    completeWorkoutSamples: 16,
+    latestWorkoutAt: mockEntries[0].occurred_at,
+  },
+  correlations: [
+    {
+      id: 'timing-correlation',
+      title: 'Workout timing correlation',
+      summary: 'Morning-midday sessions are outperforming evening-late sessions by about 1.0 weighted points in your recent data.',
+      relationship: 'positive',
+      strength: 1,
+      confidence: 0.82,
+      confidenceLabel: 'strong',
+      sampleCount: 16,
+      recommendation: 'Bias one or two important sessions toward your stronger time bucket and compare the outcome next week.',
+      evidence: [
+        { label: 'morning-midday', value: '4.2' },
+        { label: 'evening-late', value: '3.2' },
+        { label: 'confidence', value: '82%' },
+      ],
+    },
+  ],
+  predictiveInsights: [
+    {
+      id: 'tomorrow-outlook',
+      title: 'Tomorrow is set up for a strong session',
+      summary: 'Your recent pattern points to about 4.1/5 post-workout energy and 1.9/5 post-workout stress for the next comparable session.',
+      severity: 'opportunity',
+      confidence: 0.79,
+      confidenceLabel: 'strong',
+      expectedWindow: 'next session / tomorrow',
+      recommendation: 'Repeat the same timing and fueling pattern so the forecast has a chance to hold.',
+      evidence: [
+        { label: 'projected_energy', value: '4.1' },
+        { label: 'projected_stress', value: '1.9' },
+        { label: 'confidence', value: '79%' },
+      ],
+    },
+  ],
+  recurringPatterns: [
+    {
+      id: 'weekday-pattern',
+      title: 'Weekly rhythm',
+      summary: 'Tuesday is your strongest recurring slot, outperforming Friday by about 0.8 points.',
+      period: 'weekly',
+      confidence: 0.75,
+      confidenceLabel: 'moderate',
+      sampleCount: 16,
+      recommendation: 'Plan demanding sessions on your stronger weekday and reserve the weaker slot for recovery or lighter work.',
+      evidence: [
+        { label: 'best_slot', value: 'Tuesday' },
+        { label: 'watch_slot', value: 'Friday' },
+        { label: 'confidence', value: '75%' },
+      ],
+    },
+  ],
+};
+
+const mockGoals: Goal[] = [
+  {
+    id: 'goal-1',
+    title: 'Train 4 times this week',
+    metric: 'weekly_workouts',
+    direction: 'at_least',
+    targetValue: 4,
+    currentValue: 3,
+    progress: 0.75,
+    windowDays: 7,
+    note: 'Use the Tuesday morning slot as the anchor.',
+    status: 'active',
+    isMet: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'goal-2',
+    title: 'Keep post-workout stress under 2.5',
+    metric: 'post_workout_stress',
+    direction: 'at_most',
+    targetValue: 2.5,
+    currentValue: 2.1,
+    progress: 1,
+    windowDays: 30,
+    note: 'If late sessions cluster, lower intensity.',
+    status: 'completed',
+    isMet: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 export const mockApiClient = {
   async createEntry(
     type: 'workout' | 'meal',
@@ -282,6 +379,54 @@ export const mockApiClient = {
 
   async getPredictions(_userId: string): Promise<PredictionBundle> {
     return mockPredictions;
+  },
+
+  async getAnalytics(_userId: string, windowDays?: number): Promise<AnalyticsBundle> {
+    return { ...mockAnalytics, windowDays: windowDays || mockAnalytics.windowDays };
+  },
+
+  async getGoals(): Promise<Goal[]> {
+    return [...mockGoals];
+  },
+
+  async createGoal(input: GoalDraft): Promise<Goal> {
+    const goal: Goal = {
+      id: `goal-${Date.now()}`,
+      title: input.title,
+      metric: input.metric,
+      direction: input.direction,
+      targetValue: input.targetValue,
+      currentValue: 0,
+      progress: 0,
+      windowDays: input.windowDays,
+      note: input.note ?? null,
+      status: 'active',
+      isMet: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    mockGoals.unshift(goal);
+    return goal;
+  },
+
+  async updateGoal(goalId: string, input: Partial<GoalDraft> & { status?: GoalStatus }): Promise<Goal> {
+    const index = mockGoals.findIndex((goal) => goal.id === goalId);
+    if (index === -1) {
+      throw new Error('Goal not found');
+    }
+
+    mockGoals[index] = {
+      ...mockGoals[index],
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.metric !== undefined ? { metric: input.metric } : {}),
+      ...(input.direction !== undefined ? { direction: input.direction } : {}),
+      ...(input.targetValue !== undefined ? { targetValue: input.targetValue } : {}),
+      ...(input.windowDays !== undefined ? { windowDays: input.windowDays } : {}),
+      ...(input.note !== undefined ? { note: input.note } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      updatedAt: new Date().toISOString(),
+    };
+    return mockGoals[index];
   },
 
   async dismissInsight(insightId: string): Promise<void> {
