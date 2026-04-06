@@ -69,11 +69,11 @@ chmod +x setup.sh
 npm run dev
 ```
 
-The frontend will now be running at `http://localhost:5173`
+The frontend will now be running at `http://localhost:5174`
 
 ### 4. Access the Application
 
-Open your browser to `http://localhost:5173` and you should see the FitForecast dashboard!
+Open your browser to `http://localhost:5174` and you should see the FitForecast dashboard!
 
 **Default User:**
 - User ID: `00000000-0000-0000-0000-000000000001` (configured in .env)
@@ -93,7 +93,7 @@ docker-compose up --build -d
 This will start:
 - PostgreSQL database (port 5432)
 - Backend API (port 3000)
-- Frontend web app (port 5173)
+- Frontend web app (port 5174)
 
 ### 2. Verify Services
 
@@ -108,7 +108,7 @@ docker-compose logs -f
 curl http://localhost:3000/health
 
 # Check frontend
-curl http://localhost:5173
+curl http://localhost:5174
 ```
 
 ### 3. Stop Services
@@ -339,7 +339,7 @@ npm run dev
 **"Port already in use"**
 ```bash
 # Find what's using the port
-lsof -i :3000  # or :5432, :5173
+lsof -i :3000  # or :5432, :5174
 
 # Stop the conflicting service or change ports in docker-compose.yml
 ```
@@ -390,20 +390,19 @@ On the dashboard or trends page, look for personalized insights like:
 
 ## Next Steps
 
-After the MVP is running:
+After the stack is running:
 
-1. **Add Real Users:** Implement authentication (JWT, OAuth)
-2. **Enhance NLP:** Integrate Stream 4 LLM parser for better entry parsing
-3. **More Insights:** Add rules from Stream 3 analytics notebooks
-4. **Mobile App:** Build React Native version
-5. **Wearable Integration:** Connect to fitness trackers
+1. **Configure production secrets:** tighten env vars, CORS, and database access for the target environment
+2. **Enable narrative rewriting:** connect the optional Jac service to a working upstream model if you want AI-polished copy
+3. **Expand analytics coverage:** promote additional notebook rules and evaluations into backend logic
+4. **Add clients or integrations:** mobile surfaces and wearable sync remain natural follow-on work
 
 ## Support
 
 For issues or questions:
-- Check the [STREAMS_GUIDE.md](../STREAMS_GUIDE.md) for architecture details
-- Review [INTEGRATION_CONTRACT.md](../docs/INTEGRATION_CONTRACT.md) for API contracts
-- See [TECHNICAL_PLAN.md](../docs/TECHNICAL_PLAN.md) for system design
+- Start with [README.md](README.md) for architecture, setup, and route coverage
+- Use [docs/END_TO_END_GUIDE.md](docs/END_TO_END_GUIDE.md) for product walkthrough and validation flow
+- Check the relevant stream directory directly if you are changing service-specific code or configuration
 
 ---
 

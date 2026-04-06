@@ -1,265 +1,476 @@
-# FitForecast
+# 🏋️ FitForecast
 
-FitForecast is a personalized workout-and-recovery tracking web app. Users log workouts and meals in natural language, rate how they feel before and after, and get explainable insights plus forward-looking predictions built from their own history.
+> **Personal Behavioral Pattern Analyzer** – Discover your unique fitness patterns through data-driven insights
 
-The current MVP is launchable in local development with:
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
 
-- JWT authentication
-- natural-language workout and meal logging
-- pre and post feeling capture
-- baseline and trends analysis
-- deterministic insights with optional AI wording
-- a four-stage personalized prediction system
-- advanced analytics for correlations, recurring patterns, and near-term outlooks
-- goal setting and progress tracking
-- demo personas seeded with realistic historical data
+FitForecast is a personalized fitness tracking application that helps users discover **their own patterns**—not through generic advice, but through data-driven insights derived from their unique baseline. Log workouts and meals in natural language, capture how you felt before and after, and receive explainable insights tied to your personal trends.
 
-## What FitForecast Does
+---
 
-FitForecast is designed around personal baselines instead of generic fitness advice.
+## 🚀 Quick Start (2 Minutes)
 
-- It learns the user’s own timing, fueling, stress, and consistency patterns.
-- It compares current behavior against that user’s history, not population averages.
-- It explains why an insight or forecast exists with supporting stats.
-- It can optionally use an LLM layer to improve narrative wording while keeping the prediction logic deterministic and auditable.
+Want to explore the app immediately? We have 3 demo accounts ready to go:
 
-## Current Status
+### Prerequisites
+- Node.js 18+ and PostgreSQL 14+
+- Clone this repository
 
-The repository currently supports the full end-to-end MVP flow described in the walkthrough:
+### Setup & Run
+```bash
+# 1. Backend Setup
+cd stream-1-backend
+npm install
+cp .env.example .env  # Configure DATABASE_URL and JWT_SECRET
+npx prisma migrate dev
+npm run seed  # Creates 3 demo users with 95+ entries each
+npm run dev  # Starts on http://localhost:3000
 
-- frontend on port 5174
-- backend on port 3000
-- seeded demo users for Athena, Boris, and Cora
-- dashboard, history, trends, and logging flows
-- insights generation and rendering
-- personalized forecast generation through the new predictions endpoint
-- advanced analytics and goal tracking through dedicated analytics and goals endpoints
-- optional Jac bridge for AI narrative rewriting
-
-Important limitation:
-
-- Jac integration is implemented, but if the Jac service does not have a working upstream model configured, the backend falls back to deterministic narrative text.
-
-## Demo Accounts
-
-All demo accounts use the password `password123`.
-
-| Persona | Email | Pattern |
-| --- | --- | --- |
-| Athena | athena@example.com | Consistent morning exerciser improving steadily |
-| Boris | boris@example.com | Inconsistent, stressed, late-day training pattern |
-| Cora | cora@example.com | High-performing, optimized routine with strong signals |
-
-## Architecture Overview
-
-### Stream 1: Backend
-
-- Node.js + TypeScript + Express
-- Prisma + PostgreSQL
-- authentication, entries, feelings, insights, trends, predictions, analytics, goals
-- deterministic insights engine
-- personalized forecast engine
-- recurring-pattern and correlation analysis engine
-
-### Stream 2: Frontend
-
-- React 18 + TypeScript + Vite
-- route-based pages for login, signup, dashboard, log entry, history, trends, and analytics
-- prediction and insight panels wired to the backend
-- analytics workspace with correlation cards, predictive alerts, and goal tracking
-
-### Stream 3: Analytics
-
-- Python notebooks and tests for evaluating rules, baselines, and edge cases
-
-### Stream 4: Integration and LLM
-
-- scenario definitions and persona data
-- optional Jac byLLM microservice for insight and forecast narrative rewriting
-
-## Repository Layout
-
-```text
-.
-├── README.md
-├── AUTH_SYSTEM_DOCS.md
-├── DEMO_PERSONAS.md
-├── DEMO_WALKTHROUGH_GUIDE.md
-├── UPDATE_COMPLETE.md
-├── docs/
-│   ├── INTEGRATION_CONTRACT.md
-│   ├── README.md
-│   ├── TECHNICAL_PLAN.md
-│   ├── USER_JOURNEY.md
-│   └── END_TO_END_GUIDE.md
-├── stream-1-backend/
-├── stream-2-frontend/
-├── stream-3-analytics/
-└── stream-4-integration/
+# 2. Frontend Setup (in a new terminal)
+cd stream-2-frontend
+npm install
+npm run dev  # Starts on http://localhost:5174
 ```
 
-## Core Product Flows
+### Demo Accounts (All use password: `password123`)
 
-### 1. Authentication
+| Account | Email | Profile |
+|---------|-------|---------|
+| **Athena** | athena@example.com | Consistent improver - morning exerciser showing steady progress |
+| **Boris** | boris@example.com | Stressed inconsistent - night owl struggling with patterns |
+| **Cora** | cora@example.com | Peak performer - optimized evening athlete |
 
-- sign up with email, password, and optional name
-- login returns JWT
-- protected routes require a valid token
-- frontend handles expired sessions and redirects back to login
+📖 **Full walkthrough**: See [docs/END_TO_END_GUIDE.md](docs/END_TO_END_GUIDE.md) for setup, demo usage, and end-to-end product exploration.
 
-### 2. Logging
+---
 
-- create workout or meal entries in natural language
-- attach pre and post feeling ratings
-- store occurred-at timestamp for trend and timing analysis
+## ✨ Features
 
-### 3. Baselines and Trends
+### ✅ Implemented (MVP Complete)
 
-- backend computes rolling user-specific baselines
-- frontend renders charts for energy, stress, mood, and activity patterns
-- trends are based on the user’s own logged history
+- **🔐 Authentication System**
+    - JWT-based authentication with secure password hashing
+    - Sign up, login, logout, and session management
+    - Protected routes and automatic token refresh
+    - User data isolation
 
-### 4. Insights
+- **📝 Natural Language Logging**
+    - Log workouts and meals in plain text
+    - Capture pre/post feelings (mood, energy, stress) on 1-5 scales
+    - Track timing and context for each activity
 
-- deterministic rules evaluate user data
-- backend returns structured insights with supporting stats
-- optional LLM layer rewrites wording for clarity and polish
+- **📊 Personalized Baselines**
+    - Per-user, per-category baseline calculations
+    - Rolling windows (14 and 30 days)
+    - Automatic recomputation as new data arrives
+    - Compare current performance to your own history
 
-### 5. Personalized Predictions
+- **🧠 AI-Powered Insights**
+    - Personalized recommendations based on your patterns
+    - Explainable insights with supporting statistics
+    - Adaptive tone: encouragement, intervention, or optimization
+    - Context-aware suggestions (timing, consistency, recovery)
 
-FitForecast now includes a four-stage forecast system:
+- **📈 Trend Visualization**
+    - Interactive charts showing progress over time
+    - Energy, stress, and mood trends
+    - Compare baselines to recent activity
+    - Identify what's working (and what's not)
 
-1. Stage 1: Personalized heuristics
-2. Stage 2: Per-user predictive scoring
-3. Stage 3: Cross-user plus per-user hybrid blending
-4. Stage 4: AI narrative personalization
+- **👤 Demo Personas**
+    - 3 distinct user types with realistic 6-month history
+    - 95+ entries per user (285 total)
+    - Showcases different patterns and AI adaptations
+    - Perfect for testing and demonstrations
 
-The backend exposes this through `GET /predictions` and the frontend renders it in the dashboard and trends experience.
+- **📉 Advanced Analytics & Goals**
+    - Correlation analysis across timing, stress, fueling, and consistency
+    - Predictive alerts for near-term risk and opportunity
+    - Recurring daily, weekly, and monthly pattern detection
+    - Goal setting, progress tracking, completion, and archiving
 
-### 6. Advanced Analytics and Goal Tracking
+### 🚧 Planned Features
 
-FitForecast also now exposes a dedicated Phase 2 analytics layer:
+- Wearable device integrations
+- Meal nutrition database
+- Social features and challenges
+- Mobile app (iOS/Android)
+- Export and data portability
 
-1. correlation analysis between timing, stress, fueling, consistency, and outcomes
-2. predictive alerts for the next session or next day
-3. recurring daily, weekly, and monthly pattern detection
-4. goal creation, completion, and archiving with live progress tracking
+---
 
-The backend exposes this through `GET /analytics`, `GET /goals`, `POST /goals`, and `PATCH /goals/:id`, and the frontend renders it in the Analytics page.
+## 🏗️ Project Structure
 
-## Tech Stack
+```
+FitForcast_app/
+├── stream-1-backend/          # Node.js/Express API + PostgreSQL
+│   ├── src/
+│   │   ├── api/              # REST endpoints (auth, entries, insights, trends)
+│   │   ├── db/               # Prisma schema and migrations
+│   │   ├── services/         # Business logic (baselines, insights)
+│   │   ├── middleware/       # Auth and validation
+│   │   └── utils/            # Logging and helpers
+│   ├── seeds/                # Demo data generation
+│   ├── tests/                # Unit and integration tests
+│   └── docs/                 # OpenAPI spec
+│
+├── stream-2-frontend/         # React 18 + TypeScript + Vite
+│   ├── src/
+│   │   ├── components/       # Reusable UI components
+│   │   ├── pages/            # Route pages (Login, Dashboard, Trends, etc.)
+│   │   ├── context/          # State management (AuthContext)
+│   │   ├── api/              # API client and mocks
+│   │   └── types/            # TypeScript type definitions
+│   └── public/               # Static assets
+│
+├── stream-3-analytics/        # Python notebooks for insight validation
+│   ├── notebooks/            # Jupyter notebooks for testing rules
+│   ├── src/                  # Python metrics and rule evaluators
+│   └── tests/                # Python unit tests
+│
+├── stream-4-integration/      # LLM parsing and scenarios
+│   ├── llm/                  # Natural language parsing (TypeScript)
+│   └── scenarios/            # Test personas and edge cases
+│
+├── DEPLOYMENT.md             # Local, Docker, and production deployment guide
+└── docs/
+    └── END_TO_END_GUIDE.md   # Product walkthrough and validation flow
+```
+
+---
+
+## 📖 Documentation
+
+### Getting Started
+- **[README.md](README.md)** - Project overview, setup, roadmap, and developer commands
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Local, Docker, and production deployment guide
+- **[docs/END_TO_END_GUIDE.md](docs/END_TO_END_GUIDE.md)** - Detailed end-to-end exploration and validation flow
+
+### Technical Documentation
+- **[stream-1-backend/docs/openapi.yaml](stream-1-backend/docs/openapi.yaml)** - Backend API specification
+- **[stream-3-analytics/notebooks/README.md](stream-3-analytics/notebooks/README.md)** - Notebook usage and validation workflow
+- **[stream-4-integration/scenarios/README.md](stream-4-integration/scenarios/README.md)** - Scenario fixtures and persona test data
+
+### Stream Directories
+- **[stream-1-backend](stream-1-backend)** - Backend API, Prisma schema, seeds, and tests
+- **[stream-2-frontend](stream-2-frontend)** - React frontend application
+- **[stream-3-analytics](stream-3-analytics)** - Python analytics notebooks and tests
+- **[stream-4-integration](stream-4-integration)** - LLM integration and scenario fixtures
+
+---
+
+## 🛠️ Tech Stack
 
 ### Backend
-
-- Node.js 18+
-- TypeScript
-- Express
-- Prisma
-- PostgreSQL
-- Jest
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Database**: PostgreSQL 14
+- **ORM**: Prisma
+- **Authentication**: JWT (jsonwebtoken) + bcrypt
+- **Testing**: Jest + Supertest
+- **API Documentation**: OpenAPI 3.0
 
 ### Frontend
-
-- React 18
-- TypeScript
-- Vite
-- Tailwind CSS
-- React Router
+- **Framework**: React 18
+- **Language**: TypeScript
+- **Build Tool**: Vite 5
+- **Routing**: React Router v7
+- **Styling**: Tailwind CSS
+- **HTTP Client**: Axios
+- **State Management**: Context API
 
 ### Analytics
+- **Language**: Python 3.9+
+- **Notebooks**: Jupyter
+- **Libraries**: pandas, numpy, matplotlib
 
-- Python
-- Jupyter
-- pandas and related analysis tooling
+### DevOps
+- **Version Control**: Git + GitHub
+- **Package Manager**: npm
+- **Database Migrations**: Prisma Migrate
+- **Environment**: dotenv
 
-### Optional LLM Layer
+---
 
-- direct OpenAI-compatible provider
-- Ollama
-- Jac byLLM bridge
-
-## Local Development Setup
+## 🔧 Detailed Setup
 
 ### Prerequisites
 
-- Node.js 18 or newer
-- npm
-- PostgreSQL 14 or newer
-- Python 3.11 if you want to run the Jac service locally
+1. **Node.js 18+** - [Download](https://nodejs.org/)
+2. **PostgreSQL 14+** - [Download](https://www.postgresql.org/download/)
+3. **Git** - [Download](https://git-scm.com/)
 
 ### Backend Setup
 
 ```bash
 cd stream-1-backend
+
+# Install dependencies
 npm install
+
+# Configure environment
 cp .env.example .env
-```
+# Edit .env and set:
+# - DATABASE_URL="postgresql://user:password@localhost:5432/fitforecast"
+# - JWT_SECRET="your-secret-key-here"
 
-Set at least these environment variables in `stream-1-backend/.env`:
-
-```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/fitforecast"
-JWT_SECRET="replace-with-a-long-random-secret"
-JWT_ISSUER="fitforecast"
-JWT_AUDIENCE="fitforecast-web"
-```
-
-Then run:
-
-```bash
+# Run database migrations
 npx prisma migrate dev
+
+# Seed demo data (3 users with 95+ entries each)
 npm run seed
-npm run dev
+
+# Start development server
+npm run dev  # Runs on http://localhost:3000
+
+# Run tests
+npm test
 ```
-
-Backend URLs:
-
-- app API: http://localhost:3000
-- health: http://localhost:3000/health
-- API docs: http://localhost:3000/docs
 
 ### Frontend Setup
 
 ```bash
 cd stream-2-frontend
+
+# Install dependencies
 npm install
-npm run dev
+
+# Configure environment (optional - defaults work)
+# Create .env if you need to override API URL:
+# VITE_API_URL=http://localhost:3000
+
+# Start development server
+npm run dev  # Runs on http://localhost:5174
+
+# Build for production
+npm run build
 ```
 
-Frontend URL:
-
-- app: http://localhost:5174
-
-### Optional Jac Setup
-
-Jac is optional. The app works without it.
-
-If you want Jac-based narrative rewriting:
+### Analytics Setup (Optional)
 
 ```bash
-cd stream-4-integration/llm/jac_service
-python3.11 -m venv .venv311
-source .venv311/bin/activate
+cd stream-3-analytics
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
-python server.py
+
+# Run notebooks
+jupyter notebook
+# Open notebooks/ directory
 ```
 
-Then set backend environment variables before starting the backend:
+---
 
+## 🎯 Product Philosophy
+
+### Personalization-First
+
+Every insight is **personal to the user**:
+- Baselines are per-user, per-category (workouts vs. meals)
+- Insights surface *deviations from your baseline*, not population norms
+- Rules are explainable: "Your energy is +1.2 higher after morning runs vs. your average"
+- Users see *trends relative to themselves*, enabling self-discovery
+
+### What We Track
+
+**Activities:**
+- Workouts (any type, described in natural language)
+- Meals (timing and general description)
+
+**Feelings (Pre & Post-activity):**
+- **Valence** (Mood): 1 (low) to 5 (high)
+- **Energy**: 1 (exhausted) to 5 (energized)
+- **Stress**: 1 (calm) to 5 (very stressed)
+
+### What We DON'T Do (MVP Scope)
+
+- ❌ Coaching plans or medical advice
+- ❌ Calorie counting or macro tracking
+- ❌ Body composition predictions
+- ❌ Social feeds or leaderboards
+- ❌ Wearable integrations (yet)
+- ❌ Detailed nutrition database
+
+We focus on **pattern discovery**, not prescription.
+
+---
+
+## 🧪 Testing
+
+### Backend Tests
 ```bash
-INSIGHTS_LLM_PROVIDER=jac
-JAC_LLM_URL=http://127.0.0.1:8787
-JAC_LLM_API_KEY=fitforecast-local
+cd stream-1-backend
+npm test                     # Run all tests
+npm test -- --coverage       # With coverage report
+npm test -- entries.test.ts  # Specific test file
 ```
 
-Supported backend LLM providers:
+**Test Coverage:**
+- Unit tests for services (baselines, insights)
+- Integration tests for API endpoints
+- Authentication flow tests
+- Database migration tests
 
-- `off`
-- `openai`
-- `ollama`
-- `jac`
+### Frontend Tests
+```bash
+cd stream-2-frontend
+npm test
+```
 
-## Running the Full Stack
+### Analytics Validation
+```bash
+cd stream-3-analytics
+pytest tests/
+```
+
+---
+
+## 📊 Sample Insights (Based on Demo Data)
+
+### Athena (Consistent Improver)
+> "Your consistency is paying off! Your energy levels have improved 33% over the past 3 months. You've maintained an 85% activity consistency rate. Keep up your morning routine—it's working!"
+
+### Boris (Stressed Inconsistent)
+> ⚠️ "Late workouts may be disrupting your sleep. 80% of your evening workouts (after 9 PM) correlate with low next-day energy. Consider trying morning or lunch break workouts instead."
+
+### Cora (Peak Performer)
+> ✨ "You've found your optimal routine! Your metrics are consistently high (avg 3.7/5 energy, 3.8/5 mood). 90% workout consistency is excellent. Evening timing aligns with your natural energy peaks."
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how you can help:
+
+### Development Workflow
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** and add tests
+4. **Run tests**: `npm test` (backend/frontend)
+5. **Commit**: `git commit -m 'feat: Add amazing feature'`
+6. **Push**: `git push origin feature/amazing-feature`
+7. **Open a Pull Request**
+
+### Commit Convention
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation changes
+- `test:` Test additions or changes
+- `refactor:` Code refactoring
+- `style:` Formatting changes
+- `chore:` Maintenance tasks
+
+### Code Style
+
+- **Backend**: ESLint + Prettier (auto-formatted)
+- **Frontend**: ESLint + Prettier (auto-formatted)
+- **Python**: Black + flake8
+
+---
+
+## 🗺️ Roadmap
+
+### Phase 1: MVP ✅ COMPLETE
+- [x] Authentication system
+- [x] Natural language entry logging
+- [x] Pre/post feelings capture
+- [x] Per-user baseline calculations
+- [x] Personalized insights engine
+- [x] Trend visualization
+- [x] Demo personas with realistic data
+
+### Phase 2: Advanced Analytics ✅ COMPLETE
+- [x] Correlation analysis between variables
+- [x] Predictive insights (e.g., "Tomorrow might be tough")
+- [x] Pattern detection (weekly/monthly cycles)
+- [x] Goal setting and tracking
+
+### Phase 3: Enhanced UX
+- [ ] Mobile-responsive design improvements
+- [ ] Dark mode
+- [ ] Advanced filtering and search
+- [ ] Export data (CSV, JSON)
+- [ ] Customizable dashboard
+
+### Phase 4: Integrations
+- [ ] Apple Health / Google Fit
+- [ ] Fitness wearables (Fitbit, Garmin, etc.)
+- [ ] Calendar integration
+- [ ] Third-party nutrition APIs
+
+### Phase 5: Social & Community
+- [ ] Share insights with friends/coaches
+- [ ] Anonymous benchmarking (opt-in)
+- [ ] Community challenges
+- [ ] Coach/trainer access mode
+
+---
+
+## 🐛 Known Issues & Limitations
+
+### Current Limitations
+- **Data requirement**: Insights improve with 14+ days of data
+- **Manual logging**: No automatic activity detection yet
+- **Desktop-first**: Mobile UX needs optimization
+- **English only**: No internationalization yet
+
+### Known Bugs
+- No known critical bugs currently
+- See [GitHub Issues](https://github.com/Rae9711/FitForcast_app/issues) for minor issues
+
+
+---
+
+## 👥 Team & Acknowledgments
+
+**Created by**: Haorui Wang(Rae), Amy Do, Anik Mumssen, Mahitha Karnati
+
+**Special Thanks**:
+- All contributors and testers
+- Open source community for amazing tools
+- Early users providing valuable feedback
+
+---
+
+## 📞 Support & Contact
+
+- **Issues**: [GitHub Issues](https://github.com/Rae9711/FitForcast_app/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Rae9711/FitForcast_app/discussions)
+- **Email**: [Your contact email]
+
+---
+
+## 🌟 Star This Repo!
+
+If you find FitForecast useful, please consider giving it a ⭐ on GitHub!
+
+---
+
+**Built with ❤️ for everyone on their fitness journey**
+
+![FitForecast Demo](https://via.placeholder.com/800x400?text=FitForecast+Demo+Screenshot)
+
+---
+
+## Quick Links
+
+- 📖 [End-to-End Guide](docs/END_TO_END_GUIDE.md)
+- 🚀 [Deployment Guide](DEPLOYMENT.md)
+- 🏠 [Project Overview](README.md)
+- 🧪 [Scenarios & Fixtures](stream-4-integration/scenarios/README.md)
+- 📓 [Analytics Notebooks](stream-3-analytics/notebooks/README.md)
+- 🔌 [API Documentation](stream-1-backend/docs/openapi.yaml)
 
 Open three terminals.
 
@@ -357,13 +568,10 @@ The new Analytics page and `/analytics` endpoint add four major capabilities:
 ## Documentation Map
 
 - `README.md`: primary setup, architecture, and product guide
+- `DEPLOYMENT.md`: local, Docker, and production deployment guidance
 - `docs/END_TO_END_GUIDE.md`: step-by-step usage guide for demo users and real users
-- `DEMO_WALKTHROUGH_GUIDE.md`: persona-based walkthrough reference
-- `DEMO_PERSONAS.md`: seeded persona descriptions
-- `AUTH_SYSTEM_DOCS.md`: authentication implementation details
-- `docs/TECHNICAL_PLAN.md`: technical planning notes
-- `docs/INTEGRATION_CONTRACT.md`: integration contract across streams
-- `UPDATE_COMPLETE.md`: implementation summary
+- `stream-3-analytics/notebooks/README.md`: notebook purpose and validation workflow
+- `stream-4-integration/scenarios/README.md`: scenario fixtures and persona test data
 
 ## Troubleshooting
 
@@ -405,5 +613,5 @@ This repository should only track source, docs, and intentional config. Generate
 
 1. Read this file for setup and architecture
 2. Read `docs/END_TO_END_GUIDE.md` to use the product end to end
-3. Read `DEMO_WALKTHROUGH_GUIDE.md` for persona-based demo flow
-4. Read stream-specific READMEs if you are changing internals
+3. Read `DEPLOYMENT.md` if you are running the stack outside the default dev loop
+4. Read the notebook or scenario README only if you are working in those subdirectories

@@ -171,9 +171,7 @@ Each entry includes:
 ```
 stream-4-integration/scenarios/
 ├── README.md ← You are here
-├── user_stories.md
 ├── sample_logs.json
-├── edge_cases.md
 └── personas/
     ├── jordan.json
     ├── alex.json
