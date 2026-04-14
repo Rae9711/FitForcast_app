@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import { AppProvider } from './context/AppProvider';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -27,6 +27,7 @@ function RouteFallback() {
 function AppContent() {
   const { isAuthenticated, logout, user } = useAuth();
   const navigate = useNavigate();
+  const fallbackPath = isAuthenticated ? '/' : '/login';
 
   const handleLogout = () => {
     logout();
@@ -132,6 +133,7 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+            <Route path="*" element={<Navigate to={fallbackPath} replace />} />
           </Routes>
         </Suspense>
       </main>

@@ -217,7 +217,21 @@ npm run build
 2. Set **Root Directory:** `stream-2-frontend`
 3. **Build Command:** `npm run build`
 4. **Output Directory:** `dist`
-5. **Environment Variables:** Add `VITE_API_BASE_URL`, etc.
+5. Add a SPA rewrite so direct requests to client routes resolve to `index.html`
+6. **Environment Variables:** Add `VITE_API_BASE_URL`, etc.
+
+If you deploy this React app on Vercel without a rewrite, requests to routes like `/login`, `/history`, or `/analytics` will return Vercel `NOT_FOUND` because those paths only exist in the client router. Keep the frontend [stream-2-frontend/vercel.json](/Users/rae/FitForcast_app/stream-2-frontend/vercel.json) file in the deployed root with:
+
+```json
+{
+   "rewrites": [
+      {
+         "source": "/(.*)",
+         "destination": "/index.html"
+      }
+   ]
+}
+```
 
 ### Environment Variables Summary
 
