@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,6 +11,15 @@
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --ink: #102229;
+  --ink-soft: #3c5660;
+  --surface: #f4f9f8;
+}
+
+body {
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+  color: var(--ink);
+  background: var(--surface);
 }
 
 /* Smooth transitions */
@@ -46,11 +57,47 @@ select:focus {
   animation: fadeIn 0.3s ease-in-out;
 }
 
+.auth-noise {
+  background-image: radial-gradient(circle at 1px 1px, rgba(16, 34, 41, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+.animate-rise {
+  animation: riseIn 0.6s ease-out both;
+}
+
+.animate-float-slow {
+  animation: floatSlow 8s ease-in-out infinite;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatSlow {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
   }
 }

@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 export const SignupPage: React.FC = () => {
+  const PASSWORD_POLICY_HINT = 'Use at least 8 characters with uppercase, lowercase, and a number.';
+  const PASSWORD_POLICY_PATTERN = '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -27,88 +30,120 @@ export const SignupPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-gray-600">Sign up for FitForecast</p>
-        </div>
+    <div className="auth-noise relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_20%_20%,#d8f2e8_0,#f5fbf8_45%,#eef8ff_100%)] p-4 md:p-8">
+      <div className="pointer-events-none absolute top-10 left-8 h-64 w-64 rounded-full bg-emerald-300/20 blur-3xl animate-float-slow" />
+      <div className="pointer-events-none absolute -bottom-10 right-6 h-80 w-80 rounded-full bg-sky-300/25 blur-3xl animate-float-slow" />
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            {error}
+      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-6xl gap-8 lg:grid-cols-[1fr_0.95fr] lg:items-center">
+        <section className="animate-rise px-2 lg:px-8">
+          <p className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+            Start free
+          </p>
+          <h1 className="mt-6 max-w-xl text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
+            Create your personal performance map
+          </h1>
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg">
+            Join FitForecast to turn daily activity into clear, personalized coaching signals.
+          </p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 backdrop-blur">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">No guesswork</div>
+              <div className="mt-1 text-sm text-slate-700">Insights from your own data</div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 backdrop-blur">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Quick setup</div>
+              <div className="mt-1 text-sm text-slate-700">Track your first entry in 2 minutes</div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 backdrop-blur">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Trust</div>
+              <div className="mt-1 text-sm text-slate-700">10,000+ users already onboard</div>
+            </div>
           </div>
-        )}
+        </section>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Name (Optional)
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Your name"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="you@example.com"
-            />
+        <section className="animate-rise rounded-3xl border border-slate-200/70 bg-white/90 p-7 shadow-2xl backdrop-blur md:p-9">
+          <div className="mb-7">
+            <h2 className="text-3xl font-bold text-slate-900">Create account</h2>
+            <p className="mt-2 text-slate-600">Start free and build your first baseline today.</p>
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="At least 8 characters"
-            />
-            <p className="mt-1 text-xs text-gray-500">Password must be at least 8 characters</p>
-          </div>
+          {error && (
+            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              {error}
+            </div>
+          )}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? 'Creating account...' : 'Sign up'}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-slate-700">
+                Name (Optional)
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none ring-0 transition focus:border-emerald-500 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.16)]"
+                placeholder="Your name"
+              />
+            </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+            <div>
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-slate-700">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none ring-0 transition focus:border-emerald-500 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.16)]"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-700">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                pattern={PASSWORD_POLICY_PATTERN}
+                title={PASSWORD_POLICY_HINT}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none ring-0 transition focus:border-emerald-500 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.16)]"
+                placeholder="8+ chars, upper/lowercase + number"
+              />
+              <p className="mt-1 text-xs text-slate-500">{PASSWORD_POLICY_HINT}</p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading ? 'Creating account...' : 'Create free account'}
+            </button>
+          </form>
+
+          <div className="mt-7 text-center text-sm text-slate-600">
             Already have an account?{' '}
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="font-semibold text-emerald-700 transition hover:text-emerald-600"
             >
               Login
             </button>
-          </p>
+          </div>
+        </section>
         </div>
-      </div>
     </div>
   );
 };

@@ -21,6 +21,7 @@ import {
   requestMetricsMiddleware,
   securityHeadersMiddleware,
 } from './middleware/monitoring';
+import fs from 'fs';
 import path from 'path';
 
 // Optional: serve API docs via Swagger UI when dependency is installed.
@@ -78,9 +79,18 @@ app.use('/goals', goalsRouter);
 
 // Serve OpenAPI YAML and host Swagger UI at /docs when available.
 if (swaggerUi) {
-  const openApiPath = path.join(process.cwd(), 'stream-1-backend', 'docs', 'openapi.yaml');
-  app.get('/docs/openapi.yaml', (_req, res) => res.sendFile(openApiPath));
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(undefined, { swaggerUrl: '/docs/openapi.yaml' }));
+  const openApiPath = [
+    path.join(process.cwd(), 'docs', 'openapi.yaml'),
+    path.join(process.cwd(), 'stream-1-backend', 'docs', 'openapi.yaml'),
+    path.resolve(__dirname, '..', 'docs', 'openapi.yaml'),
+  ].find((candidate) => fs.existsSync(candidate));
+
+  if (openApiPath) {
+    app.get('/docs/openapi.yaml', (_req, res) => res.sendFile(openApiPath));
+    app.use('/docs', swaggerUi.serve, swaggerUi.setup(undefined, { swaggerUrl: '/docs/openapi.yaml' }));
+  } else {
+    logger.warn('OpenAPI spec not found; Swagger UI will be unavailable');
+  }
 }
 
 // Resolve the port from configuration with a development default.

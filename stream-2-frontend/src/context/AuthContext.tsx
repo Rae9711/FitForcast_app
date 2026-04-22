@@ -3,6 +3,27 @@ import { api } from '../api/client';
 
 const AUTH_TOKEN_KEY = 'authToken';
 
+const parseApiError = async (response: Response, fallbackMessage: string) => {
+  try {
+    const payload = await response.json();
+
+    if (Array.isArray(payload?.errors) && payload.errors.length > 0) {
+      const firstMessage = payload.errors[0]?.message;
+      if (typeof firstMessage === 'string' && firstMessage.trim().length > 0) {
+        return firstMessage;
+      }
+    }
+
+    if (typeof payload?.message === 'string' && payload.message.trim().length > 0) {
+      return payload.message;
+    }
+  } catch {
+    // Ignore malformed/non-JSON error payloads and fall back to a generic message.
+  }
+
+  return fallbackMessage;
+};
+
 const decodeJwtExpiry = (tokenValue: string) => {
   try {
     const [, payload] = tokenValue.split('.');
@@ -111,8 +132,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Login failed');
+        const message = await parseApiError(response, 'Login failed');
+        throw new Error(message);
       }
 
       const data = await response.json();
@@ -136,8 +157,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Signup failed');
+        const message = await parseApiError(response, 'Signup failed');
+        throw new Error(message);
       }
 
       const data = await response.json();

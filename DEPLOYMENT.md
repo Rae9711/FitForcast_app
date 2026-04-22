@@ -233,6 +233,8 @@ If you deploy this React app on Vercel without a rewrite, requests to routes lik
 }
 ```
 
+If the Vercel log finishes in a fraction of a second and never shows dependency installation or `npm run build`, the project is likely deploying the repository root instead of `stream-2-frontend`. The root [vercel.json](/Users/rae/FitForcast_app/vercel.json) file provides a fallback for repo-root deployments by running the frontend build from `stream-2-frontend` and publishing `stream-2-frontend/dist`.
+
 ### Environment Variables Summary
 
 #### Backend (.env)
