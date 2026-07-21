@@ -4,6 +4,10 @@
   "installCommand": "npm --prefix stream-2-frontend ci",
   "buildCommand": "npm --prefix stream-2-frontend run build",
   "outputDirectory": "stream-2-frontend/dist",
+  "env": {
+    "VITE_ENABLE_MOCK_DATA": "true",
+    "VITE_API_BASE_URL": "/api"
+  },
   "rewrites": [
     {
       "source": "/((?!api/).*)",

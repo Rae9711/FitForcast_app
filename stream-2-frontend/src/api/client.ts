@@ -1,8 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
 import { AnalyticsBundle, Entry, FeelingEntry, Goal, GoalDraft, GoalStatus, Insight, PredictionBundle, TrendDataPoint, TrendMetricKey, TrendsData } from '../types/index';
+import { isMockModeEnabled } from './mockMode';
 import { mockApiClient } from './mocks';
 
-const USE_MOCKS = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 const AVAILABLE_METRICS: TrendMetricKey[] = ['post-energy', 'post-valence', 'post-stress'];
 
 /**
@@ -330,7 +330,7 @@ class ApiClient implements IApiClient {
     raw_text: string,
     occurred_at: string
   ): Promise<Entry> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.createEntry(type, raw_text, occurred_at);
     }
 
@@ -343,7 +343,7 @@ class ApiClient implements IApiClient {
   }
 
   async getEntries(userId: string, limit?: number, page?: number): Promise<Entry[]> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getEntries(userId, limit);
     }
 
@@ -361,7 +361,7 @@ class ApiClient implements IApiClient {
     stress: number,
     notes?: string
   ): Promise<FeelingEntry> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.addFeeling(entryId, when, valence, energy, stress, notes);
     }
 
@@ -399,7 +399,7 @@ class ApiClient implements IApiClient {
     windowDays?: number,
     metric: TrendMetricKey = 'post-energy'
   ): Promise<TrendsData> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getTrends(userId, windowDays, metric);
     }
 
@@ -419,7 +419,7 @@ class ApiClient implements IApiClient {
   }
 
   async getInsights(userId: string): Promise<Insight[]> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getInsights(userId);
     }
 
@@ -428,7 +428,7 @@ class ApiClient implements IApiClient {
   }
 
   async getPredictions(userId: string): Promise<PredictionBundle> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getPredictions(userId);
     }
 
@@ -439,7 +439,7 @@ class ApiClient implements IApiClient {
   }
 
   async getAnalytics(userId: string, windowDays?: number): Promise<AnalyticsBundle> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getAnalytics(userId, windowDays);
     }
 
@@ -453,7 +453,7 @@ class ApiClient implements IApiClient {
   }
 
   async getGoals(): Promise<Goal[]> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getGoals();
     }
 
@@ -462,7 +462,7 @@ class ApiClient implements IApiClient {
   }
 
   async createGoal(input: GoalDraft): Promise<Goal> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.createGoal(input);
     }
 
@@ -478,7 +478,7 @@ class ApiClient implements IApiClient {
   }
 
   async updateGoal(goalId: string, input: Partial<GoalDraft> & { status?: GoalStatus }): Promise<Goal> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.updateGoal(goalId, input);
     }
 
@@ -495,7 +495,7 @@ class ApiClient implements IApiClient {
   }
 
   async dismissInsight(insightId: string): Promise<void> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.dismissInsight(insightId);
     }
 
@@ -503,7 +503,7 @@ class ApiClient implements IApiClient {
   }
 
   async deleteEntry(entryId: string): Promise<void> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return;
     }
 

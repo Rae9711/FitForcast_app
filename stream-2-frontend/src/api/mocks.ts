@@ -345,7 +345,8 @@ export const mockApiClient = {
   },
 
   async getEntries(userId: string, limit?: number): Promise<Entry[]> {
-    const entries = mockEntries.filter((e) => e.userId === userId);
+    // Remap seeded mock rows onto the active demo/authenticated user id.
+    const entries = mockEntries.map((entry) => ({ ...entry, userId }));
     return limit ? entries.slice(0, limit) : entries;
   },
 
@@ -373,16 +374,22 @@ export const mockApiClient = {
     return { ...mockTrendsData, metric, windowDays: windowDays || 30 };
   },
 
-  async getInsights(_userId: string): Promise<Insight[]> {
-    return mockInsights.filter((i) => !i.dismissed);
+  async getInsights(userId: string): Promise<Insight[]> {
+    return mockInsights
+      .filter((insight) => !insight.dismissed)
+      .map((insight) => ({ ...insight, userId }));
   },
 
-  async getPredictions(_userId: string): Promise<PredictionBundle> {
-    return mockPredictions;
+  async getPredictions(userId: string): Promise<PredictionBundle> {
+    return { ...mockPredictions, userId };
   },
 
-  async getAnalytics(_userId: string, windowDays?: number): Promise<AnalyticsBundle> {
-    return { ...mockAnalytics, windowDays: windowDays || mockAnalytics.windowDays };
+  async getAnalytics(userId: string, windowDays?: number): Promise<AnalyticsBundle> {
+    return {
+      ...mockAnalytics,
+      userId,
+      windowDays: windowDays || mockAnalytics.windowDays,
+    };
   },
 
   async getGoals(): Promise<Goal[]> {

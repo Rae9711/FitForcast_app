@@ -341,9 +341,9 @@ npm run seed
 1. Check backend is running: `curl http://localhost:3000/health`
 2. Prefer same-origin proxy: leave `VITE_API_BASE_URL=/api` (default) so Vite/nginx forward `/api/*` to the backend
 3. If you use an absolute API URL, verify `VITE_API_BASE_URL` in `stream-2-frontend/.env` and restart Vite after changing it
-4. On Vercel/static hosts, set `VITE_API_BASE_URL` at **build time** to your deployed API origin (do not leave it pointing at `localhost`)
+4. On Vercel/static hosts, demo accounts work offline (`VITE_ENABLE_MOCK_DATA=true` in `vercel.json`). For a live API, set `VITE_API_BASE_URL` at **build time** to your deployed API origin and turn mock mode off
 5. Check browser console for CORS errors; set backend `CORS_ORIGIN` to your frontend origin in production
-6. Enable mocks temporarily: Set `VITE_ENABLE_MOCK_DATA=true`
+6. Local offline demo: log in as `athena@example.com` / `password123` — if the API is down, the app falls back to mock data automatically
 
 **"Blank page or errors on load"**
 ```bash
