@@ -1,0 +1,1080 @@
+From fd3f8a041dcab6c0cc110ebc2b573bd5745c45d9 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Tue, 21 Jul 2026 04:53:32 +0000
+Subject: [PATCH] Enable offline demo login when Render API is suspended
+
+PulsePilot Vercel builds point at pulsepilot-app.onrender.com, which is
+currently suspended and causes Failed to fetch on login. Add offline demo
+auth for Athena/Boris/Cora, mock API coverage for coach/weight routes, and
+VITE_ENABLE_MOCK_DATA on Vercel.
+---
+ stream-2-frontend/.env.example                |   7 +-
+ stream-2-frontend/src/api/client.ts           |  96 +++++--
+ stream-2-frontend/src/api/demoAuth.ts         |  88 +++++++
+ stream-2-frontend/src/api/mockMode.ts         |  28 ++
+ stream-2-frontend/src/api/mocks.ts            | 242 +++++++++++++++++-
+ stream-2-frontend/src/context/AuthContext.tsx | 105 +++++++-
+ stream-2-frontend/src/pages/Login.tsx         |  26 +-
+ stream-2-frontend/vercel.json                 |   7 +-
+ vercel.json                                   |   7 +-
+ 9 files changed, 566 insertions(+), 40 deletions(-)
+ create mode 100644 stream-2-frontend/src/api/demoAuth.ts
+ create mode 100644 stream-2-frontend/src/api/mockMode.ts
+
+diff --git a/stream-2-frontend/.env.example b/stream-2-frontend/.env.example
+index f8f7fba..3efcda1 100644
+--- a/stream-2-frontend/.env.example
++++ b/stream-2-frontend/.env.example
+@@ -2,10 +2,15 @@
+ # Copy this file to .env and fill in your actual values
+ 
+ # API Backend URL
+-VITE_API_BASE_URL=http://localhost:3000
++# Absolute URL for a live backend (e.g. Render). Leave unset to use /api proxy locally.
++# Vercel dashboard may also set this — if the backend is suspended, enable mock mode.
++# VITE_API_BASE_URL=https://pulsepilot-app.onrender.com
++VITE_API_BASE_URL=/api
+ 
+ # Default User ID (for MVP development without auth)
+ VITE_DEFAULT_USER_ID=00000000-0000-0000-0000-000000000001
+ 
+ # Feature Flags
++# true = offline demo mode (Athena/Boris/Cora work without a live API).
++# Vercel sets this via vercel.json so demos work when Render is suspended.
+ VITE_ENABLE_MOCK_DATA=false
+diff --git a/stream-2-frontend/src/api/client.ts b/stream-2-frontend/src/api/client.ts
+index 1581c89..bc0e88d 100644
+--- a/stream-2-frontend/src/api/client.ts
++++ b/stream-2-frontend/src/api/client.ts
+@@ -1,11 +1,25 @@
+ import axios, { AxiosInstance } from 'axios';
+ import { AnalyticsBundle, ChatMessage, CoachChatResponse, CoachLogDraft, DailySummary, Entry, FeelingEntry, FitnessPlan, Goal, GoalDraft, GoalStatus, Insight, NutritionEstimate, PersonalizationSummary, PredictionBundle, TrendDataPoint, TrendMetricKey, TrendsData, UserProfile, WeightLog } from '../types/index';
++import { isMockModeEnabled } from './mockMode';
+ import { mockApiClient } from './mocks';
+ import { clearStoredAuthToken, getSavedLanguage, getStoredAuthToken } from '../utils/preferences';
+ 
+-const USE_MOCKS = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+ const AVAILABLE_METRICS: TrendMetricKey[] = ['post-energy', 'post-valence', 'post-stress'];
+ 
++/**
++ * Resolve the API base URL.
++ * Prefer VITE_API_BASE_URL when set (e.g. Render). Otherwise use same-origin /api.
++ */
++export const resolveApiBaseUrl = (
++  configured: string | undefined = import.meta.env.VITE_API_BASE_URL
++): string => {
++  const trimmed = configured?.trim();
++  if (!trimmed) {
++    return '/api';
++  }
++  return trimmed.replace(/\/+$/, '');
++};
++
+ type BackendEntry = {
+   id: string;
+   user_id: string;
+@@ -273,7 +287,7 @@ export interface IApiClient {
+ 
+ class ApiClient implements IApiClient {
+   private axiosInstance: AxiosInstance;
+-  public baseURL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
++  public baseURL: string = resolveApiBaseUrl();
+ 
+   constructor() {
+     this.axiosInstance = axios.create({
+@@ -301,8 +315,16 @@ class ApiClient implements IApiClient {
+       (response) => response,
+       (error) => {
+         if (error.response?.status === 401) {
+-          clearStoredAuthToken();
+-          window.location.href = '/login';
++          const requestUrl = String(error.config?.url ?? '');
++          const isAuthEndpoint =
++            requestUrl.includes('/auth/login') || requestUrl.includes('/auth/signup');
++          const onAuthPage =
++            typeof window !== 'undefined' &&
++            (window.location.pathname === '/login' || window.location.pathname === '/signup');
++          if (!isAuthEndpoint && !onAuthPage) {
++            clearStoredAuthToken();
++            window.location.href = '/login';
++          }
+         }
+         throw error;
+       }
+@@ -314,7 +336,7 @@ class ApiClient implements IApiClient {
+     raw_text: string,
+     occurred_at: string
+   ): Promise<Entry> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.createEntry(type, raw_text, occurred_at);
+     }
+ 
+@@ -327,7 +349,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async getEntries(userId: string, limit?: number, page?: number): Promise<Entry[]> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.getEntries(userId, limit);
+     }
+ 
+@@ -345,7 +367,7 @@ class ApiClient implements IApiClient {
+     stress: number,
+     notes?: string
+   ): Promise<FeelingEntry> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.addFeeling(entryId, when, valence, energy, stress, notes);
+     }
+ 
+@@ -383,7 +405,7 @@ class ApiClient implements IApiClient {
+     windowDays?: number,
+     metric: TrendMetricKey = 'post-energy'
+   ): Promise<TrendsData> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.getTrends(userId, windowDays, metric);
+     }
+ 
+@@ -403,7 +425,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async getInsights(userId: string): Promise<Insight[]> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.getInsights(userId);
+     }
+ 
+@@ -412,7 +434,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async getPredictions(userId: string): Promise<PredictionBundle> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.getPredictions(userId);
+     }
+ 
+@@ -423,7 +445,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async getAnalytics(userId: string, windowDays?: number): Promise<AnalyticsBundle> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.getAnalytics(userId, windowDays);
+     }
+ 
+@@ -437,7 +459,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async getGoals(): Promise<Goal[]> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.getGoals();
+     }
+ 
+@@ -446,7 +468,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async createGoal(input: GoalDraft): Promise<Goal> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.createGoal(input);
+     }
+ 
+@@ -462,7 +484,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async updateGoal(goalId: string, input: Partial<GoalDraft> & { status?: GoalStatus }): Promise<Goal> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.updateGoal(goalId, input);
+     }
+ 
+@@ -479,7 +501,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async dismissInsight(insightId: string): Promise<void> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return mockApiClient.dismissInsight(insightId);
+     }
+ 
+@@ -487,7 +509,7 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async deleteEntry(entryId: string): Promise<void> {
+-    if (USE_MOCKS) {
++    if (isMockModeEnabled()) {
+       return;
+     }
+ 
+@@ -497,6 +519,9 @@ class ApiClient implements IApiClient {
+   // ── Weight Tracking ────────────────────────────────────────────────────────
+ 
+   async getWeightLogs(limit?: number): Promise<WeightLog[]> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.getWeightLogs(limit);
++    }
+     const response = await this.axiosInstance.get<WeightLog[]>('/weight', {
+       params: { limit: limit ?? 90 },
+     });
+@@ -504,6 +529,9 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async logWeight(weightKg: number, loggedAt?: string, note?: string): Promise<WeightLog> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.logWeight(weightKg, loggedAt, note);
++    }
+     const response = await this.axiosInstance.post<WeightLog>('/weight', {
+       weightKg,
+       loggedAt,
+@@ -513,17 +541,26 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async deleteWeightLog(id: string): Promise<void> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.deleteWeightLog(id);
++    }
+     await this.axiosInstance.delete(`/weight/${id}`);
+   }
+ 
+   // ── User Profile ───────────────────────────────────────────────────────────
+ 
+   async getProfile(): Promise<UserProfile> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.getProfile();
++    }
+     const response = await this.axiosInstance.get<UserProfile>('/profile');
+     return response.data;
+   }
+ 
+   async updateProfile(profile: UserProfile): Promise<UserProfile> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.updateProfile(profile);
++    }
+     const response = await this.axiosInstance.put<UserProfile>('/profile', profile);
+     return response.data;
+   }
+@@ -540,11 +577,17 @@ class ApiClient implements IApiClient {
+     goalWeightKg: number;
+     goalDays: number;
+   }): Promise<FitnessPlan> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.generatePlan(input);
++    }
+     const response = await this.axiosInstance.post<FitnessPlan>('/coach/plan', input);
+     return response.data;
+   }
+ 
+   async getPlan(): Promise<FitnessPlan | null> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.getPlan();
++    }
+     try {
+       const response = await this.axiosInstance.get<FitnessPlan>('/coach/plan');
+       return response.data;
+@@ -556,11 +599,17 @@ class ApiClient implements IApiClient {
+   // ── Coach Chat ─────────────────────────────────────────────────────────────
+ 
+   async getChatHistory(): Promise<ChatMessage[]> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.getChatHistory();
++    }
+     const response = await this.axiosInstance.get<ChatMessage[]>('/coach/chat');
+     return response.data;
+   }
+ 
+   async sendChatMessage(message: string): Promise<CoachChatResponse> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.sendChatMessage(message);
++    }
+     const response = await this.axiosInstance.post<CoachChatResponse>('/coach/chat', {
+       message,
+     });
+@@ -568,6 +617,9 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async confirmCoachLogEntries(entries: CoachLogDraft[]): Promise<{ created: Array<{ id: string; type: 'meal' | 'workout'; rawText: string; occurredAt: string }> }> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.confirmCoachLogEntries(entries);
++    }
+     const response = await this.axiosInstance.post<{ created: Array<{ id: string; type: 'meal' | 'workout'; rawText: string; occurredAt: string }> }>('/coach/log-entries/confirm', {
+       entries,
+     });
+@@ -575,12 +627,18 @@ class ApiClient implements IApiClient {
+   }
+ 
+   async clearChatHistory(): Promise<void> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.clearChatHistory();
++    }
+     await this.axiosInstance.delete('/coach/chat');
+   }
+ 
+   // ── Nutrition Estimation ───────────────────────────────────────────────────
+ 
+   async estimateNutrition(mealText: string): Promise<NutritionEstimate> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.estimateNutrition(mealText);
++    }
+     const response = await this.axiosInstance.post<NutritionEstimate>('/coach/nutrition', {
+       mealText,
+     });
+@@ -590,11 +648,17 @@ class ApiClient implements IApiClient {
+   // ── Daily Summary ──────────────────────────────────────────────────────────
+ 
+   async getDailySummary(): Promise<DailySummary> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.getDailySummary();
++    }
+     const response = await this.axiosInstance.get<DailySummary>('/coach/daily-summary');
+     return response.data;
+   }
+ 
+   async getPersonalizationSummary(): Promise<PersonalizationSummary> {
++    if (isMockModeEnabled()) {
++      return mockApiClient.getPersonalizationSummary();
++    }
+     const response = await this.axiosInstance.get<PersonalizationSummary>('/coach/personalization-summary');
+     return response.data;
+   }
+diff --git a/stream-2-frontend/src/api/demoAuth.ts b/stream-2-frontend/src/api/demoAuth.ts
+new file mode 100644
+index 0000000..8412fd3
+--- /dev/null
++++ b/stream-2-frontend/src/api/demoAuth.ts
+@@ -0,0 +1,88 @@
++export type DemoUser = {
++  id: string;
++  email: string;
++  name: string;
++  createdAt: string;
++  updatedAt: string;
++};
++
++export const DEMO_PASSWORD = 'password123';
++
++const createdAt = '2025-09-01T12:00:00.000Z';
++
++/** Built-in personas advertised on the login page / README. */
++export const DEMO_USERS: Record<string, DemoUser> = {
++  'athena@example.com': {
++    id: '00000000-0000-0000-0000-000000000001',
++    email: 'athena@example.com',
++    name: 'Athena',
++    createdAt,
++    updatedAt: createdAt,
++  },
++  'boris@example.com': {
++    id: '00000000-0000-0000-0000-000000000002',
++    email: 'boris@example.com',
++    name: 'Boris',
++    createdAt,
++    updatedAt: createdAt,
++  },
++  'cora@example.com': {
++    id: '00000000-0000-0000-0000-000000000003',
++    email: 'cora@example.com',
++    name: 'Cora',
++    createdAt,
++    updatedAt: createdAt,
++  },
++};
++
++type DemoTokenPayload = {
++  email: string;
++  exp: number;
++};
++
++const encodePayload = (payload: DemoTokenPayload) => btoa(JSON.stringify(payload));
++
++const decodePayload = (encoded: string): DemoTokenPayload | null => {
++  try {
++    return JSON.parse(atob(encoded)) as DemoTokenPayload;
++  } catch {
++    return null;
++  }
++};
++
++export const isDemoEmail = (email: string) =>
++  Boolean(DEMO_USERS[email.trim().toLowerCase()]);
++
++export const createDemoToken = (email: string) => {
++  const normalized = email.trim().toLowerCase();
++  return `demo.${encodePayload({
++    email: normalized,
++    exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
++  })}`;
++};
++
++export const parseDemoToken = (token: string): DemoUser | null => {
++  if (!token.startsWith('demo.')) {
++    return null;
++  }
++
++  const payload = decodePayload(token.slice('demo.'.length));
++  if (!payload?.email || typeof payload.exp !== 'number' || payload.exp <= Date.now()) {
++    return null;
++  }
++
++  return DEMO_USERS[payload.email] ?? null;
++};
++
++export const authenticateDemoUser = (
++  email: string,
++  password: string
++): { user: DemoUser; token: string } | null => {
++  const normalized = email.trim().toLowerCase();
++  const user = DEMO_USERS[normalized];
++  if (!user || password !== DEMO_PASSWORD) {
++    return null;
++  }
++
++  return { user, token: createDemoToken(normalized) };
++};
+diff --git a/stream-2-frontend/src/api/mockMode.ts b/stream-2-frontend/src/api/mockMode.ts
+new file mode 100644
+index 0000000..4c4d093
+--- /dev/null
++++ b/stream-2-frontend/src/api/mockMode.ts
+@@ -0,0 +1,28 @@
++const MOCK_MODE_KEY = 'pulsepilot_mock_mode';
++
++const readSessionFlag = () => {
++  try {
++    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(MOCK_MODE_KEY) === 'true';
++  } catch {
++    return false;
++  }
++};
++
++/** Compile-time mock flag (Vercel/static demos) or session fallback after offline demo login. */
++export const isMockModeEnabled = (): boolean =>
++  import.meta.env.VITE_ENABLE_MOCK_DATA === 'true' || readSessionFlag();
++
++export const setMockModeEnabled = (enabled: boolean): void => {
++  try {
++    if (typeof sessionStorage === 'undefined') {
++      return;
++    }
++    if (enabled) {
++      sessionStorage.setItem(MOCK_MODE_KEY, 'true');
++    } else {
++      sessionStorage.removeItem(MOCK_MODE_KEY);
++    }
++  } catch {
++    // Ignore storage failures (private mode / blocked cookies).
++  }
++};
+diff --git a/stream-2-frontend/src/api/mocks.ts b/stream-2-frontend/src/api/mocks.ts
+index c4593d5..f23dbaa 100644
+--- a/stream-2-frontend/src/api/mocks.ts
++++ b/stream-2-frontend/src/api/mocks.ts
+@@ -1,4 +1,4 @@
+-import { AnalyticsBundle, Entry, FeelingEntry, Goal, GoalDraft, GoalStatus, Insight, PredictionBundle, TrendMetricKey, TrendsData } from '../types/index';
++import { AnalyticsBundle, ChatMessage, CoachChatResponse, CoachLogDraft, DailySummary, Entry, FeelingEntry, FitnessPlan, Goal, GoalDraft, GoalStatus, Insight, NutritionEstimate, PersonalizationSummary, PredictionBundle, TrendMetricKey, TrendsData, UserProfile, WeightLog } from '../types/index';
+ 
+ export const mockUser = {
+   id: 'user-123',
+@@ -345,7 +345,7 @@ export const mockApiClient = {
+   },
+ 
+   async getEntries(userId: string, limit?: number): Promise<Entry[]> {
+-    const entries = mockEntries.filter((e) => e.userId === userId);
++    const entries = mockEntries.map((entry) => ({ ...entry, userId }));
+     return limit ? entries.slice(0, limit) : entries;
+   },
+ 
+@@ -373,16 +373,22 @@ export const mockApiClient = {
+     return { ...mockTrendsData, metric, windowDays: windowDays || 30 };
+   },
+ 
+-  async getInsights(_userId: string): Promise<Insight[]> {
+-    return mockInsights.filter((i) => !i.dismissed);
++  async getInsights(userId: string): Promise<Insight[]> {
++    return mockInsights
++      .filter((insight) => !insight.dismissed)
++      .map((insight) => ({ ...insight, userId }));
+   },
+ 
+-  async getPredictions(_userId: string): Promise<PredictionBundle> {
+-    return mockPredictions;
++  async getPredictions(userId: string): Promise<PredictionBundle> {
++    return { ...mockPredictions, userId };
+   },
+ 
+-  async getAnalytics(_userId: string, windowDays?: number): Promise<AnalyticsBundle> {
+-    return { ...mockAnalytics, windowDays: windowDays || mockAnalytics.windowDays };
++  async getAnalytics(userId: string, windowDays?: number): Promise<AnalyticsBundle> {
++    return {
++      ...mockAnalytics,
++      userId,
++      windowDays: windowDays || mockAnalytics.windowDays,
++    };
+   },
+ 
+   async getGoals(): Promise<Goal[]> {
+@@ -435,4 +441,224 @@ export const mockApiClient = {
+       insight.dismissed = true;
+     }
+   },
++
++  async getWeightLogs(limit?: number): Promise<WeightLog[]> {
++    const now = Date.now();
++    const logs: WeightLog[] = Array.from({ length: 8 }).map((_, index) => ({
++      id: `weight-${index + 1}`,
++      userId: mockUser.id,
++      weightKg: Number((72 - index * 0.3).toFixed(1)),
++      loggedAt: new Date(now - index * 3 * 24 * 60 * 60 * 1000).toISOString(),
++      note: index === 0 ? 'Feeling lighter after consistent training' : null,
++      createdAt: new Date(now - index * 3 * 24 * 60 * 60 * 1000).toISOString(),
++    }));
++    return typeof limit === 'number' ? logs.slice(0, limit) : logs;
++  },
++
++  async logWeight(weightKg: number, loggedAt?: string, note?: string): Promise<WeightLog> {
++    const at = loggedAt ?? new Date().toISOString();
++    return {
++      id: `weight-${Date.now()}`,
++      userId: mockUser.id,
++      weightKg,
++      loggedAt: at,
++      note: note ?? null,
++      createdAt: new Date().toISOString(),
++    };
++  },
++
++  async deleteWeightLog(_id: string): Promise<void> {
++    return;
++  },
++
++  async getProfile(): Promise<UserProfile> {
++    return {
++      birthYear: 1995,
++      gender: 'female',
++      heightCm: 168,
++      currentWeightKg: 72,
++      activityLevel: 'moderate',
++      goalType: 'lose',
++      goalWeightKg: 68,
++      goalDays: 90,
++    };
++  },
++
++  async updateProfile(profile: UserProfile): Promise<UserProfile> {
++    return { ...profile, updatedAt: new Date().toISOString() };
++  },
++
++  async generatePlan(input: {
++    birthYear: number;
++    gender: string;
++    heightCm: number;
++    currentWeightKg: number;
++    activityLevel: string;
++    goalType: string;
++    goalWeightKg: number;
++    goalDays: number;
++  }): Promise<FitnessPlan> {
++    const now = new Date().toISOString();
++    return {
++      id: `plan-${Date.now()}`,
++      userId: mockUser.id,
++      bmr: 1450,
++      tdee: 2100,
++      dailyCalories: 1800,
++      dailyProteinG: 120,
++      dailyCarbsG: 180,
++      dailyFatG: 60,
++      calorieDeficit: 300,
++      exercisePlan: [
++        '3x strength sessions per week',
++        '2x easy cardio sessions',
++        'Daily 10-minute mobility',
++      ],
++      goalSummary: `Demo plan toward ${input.goalWeightKg}kg in about ${input.goalDays} days.`,
++      dailyTips: ['Prioritize protein at breakfast', 'Keep bedtime consistent'],
++      createdAt: now,
++      updatedAt: now,
++    };
++  },
++
++  async getPlan(): Promise<FitnessPlan | null> {
++    return this.generatePlan({
++      birthYear: 1995,
++      gender: 'female',
++      heightCm: 168,
++      currentWeightKg: 72,
++      activityLevel: 'moderate',
++      goalType: 'lose',
++      goalWeightKg: 68,
++      goalDays: 90,
++    });
++  },
++
++  async getChatHistory(): Promise<ChatMessage[]> {
++    const now = Date.now();
++    return [
++      {
++        id: 'chat-1',
++        userId: mockUser.id,
++        role: 'assistant',
++        content: 'Welcome to offline demo mode. Ask me about today’s training or meals.',
++        context: null,
++        createdAt: new Date(now - 60_000).toISOString(),
++      },
++    ];
++  },
++
++  async sendChatMessage(message: string): Promise<CoachChatResponse> {
++    return {
++      messageId: `chat-${Date.now()}`,
++      reply: `Demo coach reply to: "${message}". The live API is offline, so this is mock guidance.`,
++    };
++  },
++
++  async confirmCoachLogEntries(entries: CoachLogDraft[]): Promise<{ created: Array<{ id: string; type: 'meal' | 'workout'; rawText: string; occurredAt: string }> }> {
++    const now = new Date().toISOString();
++    return {
++      created: entries.map((entry, index) => ({
++        id: `coach-entry-${Date.now()}-${index}`,
++        type: entry.type,
++        rawText: entry.rawText,
++        occurredAt: entry.occurredAt ?? now,
++      })),
++    };
++  },
++
++  async clearChatHistory(): Promise<void> {
++    return;
++  },
++
++  async estimateNutrition(mealText: string): Promise<NutritionEstimate> {
++    return {
++      caloriesKcal: 450,
++      proteinG: 28,
++      carbsG: 40,
++      fiberG: 6,
++      fatG: 16,
++      summary: `Demo nutrition estimate for "${mealText}".`,
++    };
++  },
++
++  async getDailySummary(): Promise<DailySummary> {
++    return {
++      date: new Date().toISOString().slice(0, 10),
++      totals: {
++        caloriesKcal: 1320,
++        proteinG: 85,
++        carbsG: 120,
++        fatG: 42,
++        fiberG: 18,
++      },
++      remaining: {
++        caloriesKcal: 480,
++        proteinG: 35,
++        carbsG: 60,
++        fatG: 18,
++      },
++      plan: {
++        dailyCalories: 1800,
++        dailyProteinG: 120,
++        dailyCarbsG: 180,
++        dailyFatG: 60,
++      },
++      mealCount: 3,
++    };
++  },
++
++  async getPersonalizationSummary(): Promise<PersonalizationSummary> {
++    return {
++      generatedAt: new Date().toISOString(),
++      coachingMode: 'build',
++      riskLevel: 'low',
++      profileMemory: {
++        consistency30d: 0.78,
++        bestWorkoutHour: 7,
++        avgPostEnergy: 3.8,
++        avgPostStress: 2.1,
++      },
++      outcomeFocus: {
++        bestNextAction: 'Keep morning sessions and protect sleep before hard days.',
++        expectedBenefit: 'More stable post-workout energy',
++        confidence: 0.72,
++        confidenceLabel: 'medium',
++        evidence: [{ label: 'samples', value: 24 }],
++      },
++      recommendations: [
++        {
++          id: 'rec-1',
++          title: 'Anchor Tuesday mornings',
++          action: 'Schedule a 40-minute strength block before 9am.',
++          expectedBenefit: 'Higher completion rate',
++          confidence: 0.7,
++          confidenceLabel: 'medium',
++          evidence: [{ label: 'adherence', value: '78%' }],
++        },
++      ],
++      weeklyExperiments: [
++        {
++          id: 'exp-1',
++          title: 'Protein at breakfast',
++          adherencePct: 80,
++          outcomeScore: 0.7,
++          status: 'winning',
++          summary: 'Energy feels steadier on days with 25g+ protein early.',
++        },
++      ],
++      weeklyRecap: {
++        wins: ['Logged 5 of 7 days', 'Stress stayed under 3 after evening workouts'],
++        misses: ['Skipped one recovery session'],
++        nextFocus: 'Protect sleep before hard intervals',
++      },
++      weightPerformanceLink: {
++        summary: 'Weight trend is gently down while workout energy holds steady.',
++        correlation: -0.22,
++        confidence: 0.55,
++        confidenceLabel: 'medium',
++        evidence: [{ label: 'weight samples', value: 8 }],
++      },
++    };
++  },
+ };
+diff --git a/stream-2-frontend/src/context/AuthContext.tsx b/stream-2-frontend/src/context/AuthContext.tsx
+index 1ebe89e..21b9f5b 100644
+--- a/stream-2-frontend/src/context/AuthContext.tsx
++++ b/stream-2-frontend/src/context/AuthContext.tsx
+@@ -1,5 +1,7 @@
+ import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+ import { api } from '../api/client';
++import { authenticateDemoUser, parseDemoToken } from '../api/demoAuth';
++import { isMockModeEnabled, setMockModeEnabled } from '../api/mockMode';
+ import {
+   clearStoredAuthToken,
+   getKeepSignedInPreference,
+@@ -7,6 +9,34 @@ import {
+   persistAuthToken,
+ } from '../utils/preferences';
+ 
++const NETWORK_ERROR_MESSAGE =
++  'Cannot reach the PulsePilot API. The hosted backend may be down — use a demo account (athena/boris/cora @example.com / password123) for offline mode.';
++
++const isNetworkFailure = (error: unknown) => {
++  if (!(error instanceof Error)) {
++    return false;
++  }
++
++  const message = error.message.toLowerCase();
++  return (
++    error.name === 'TypeError' ||
++    message.includes('failed to fetch') ||
++    message.includes('networkerror') ||
++    message.includes('load failed') ||
++    message.includes('network request failed')
++  );
++};
++
++/** Suspended/static hosts often return HTML or 5xx for API routes. */
++const isUnreachableApiResponse = (response: Response) => {
++  if ([404, 405, 501, 502, 503, 504].includes(response.status)) {
++    return true;
++  }
++
++  const contentType = response.headers.get('content-type') ?? '';
++  return contentType.includes('text/html');
++};
++
+ const parseApiError = async (response: Response, fallbackMessage: string) => {
+   try {
+     const payload = await response.json();
+@@ -43,6 +73,9 @@ const decodeJwtExpiry = (tokenValue: string) => {
+ };
+ 
+ const isExpiredToken = (tokenValue: string) => {
++  if (parseDemoToken(tokenValue)) {
++    return false;
++  }
+   const expiryMs = decodeJwtExpiry(tokenValue);
+   return expiryMs !== null && expiryMs <= Date.now();
+ };
+@@ -55,6 +88,24 @@ interface User {
+   updatedAt: string;
+ }
+ 
++const applyDemoSession = (
++  email: string,
++  password: string,
++  setToken: (token: string) => void,
++  setUser: (user: User) => void
++) => {
++  const demo = authenticateDemoUser(email, password);
++  if (!demo) {
++    return false;
++  }
++
++  setMockModeEnabled(true);
++  setToken(demo.token);
++  setUser(demo.user);
++  persistAuthToken(demo.token, getKeepSignedInPreference());
++  return true;
++};
++
+ interface AuthContextType {
+   user: User | null;
+   token: string | null;
+@@ -84,17 +135,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+   const [token, setToken] = useState<string | null>(null);
+   const [isLoading, setIsLoading] = useState(true);
+ 
+-  // Load token from persisted storage on mount
+   useEffect(() => {
+     const storedToken = getStoredAuthToken();
+     if (storedToken) {
+       if (isExpiredToken(storedToken)) {
+         clearStoredAuthToken();
++        setMockModeEnabled(false);
++        setIsLoading(false);
++        return;
++      }
++
++      const demoUser = parseDemoToken(storedToken);
++      if (demoUser) {
++        setMockModeEnabled(true);
++        setToken(storedToken);
++        setUser(demoUser);
+         setIsLoading(false);
+         return;
+       }
++
+       setToken(storedToken);
+-      // Verify token and load user info
+       fetchCurrentUser(storedToken);
+     } else {
+       setIsLoading(false);
+@@ -105,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+     try {
+       const response = await fetch(`${api.baseURL}/auth/me`, {
+         headers: {
+-          'Authorization': `Bearer ${authToken}`,
++          Authorization: `Bearer ${authToken}`,
+         },
+       });
+ 
+@@ -117,7 +177,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+       setUser(data.user);
+     } catch (error) {
+       console.error('Failed to fetch current user:', error);
+-      // Clear invalid token
+       clearStoredAuthToken();
+       setToken(null);
+     } finally {
+@@ -126,6 +185,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+   };
+ 
+   const login = async (email: string, password: string) => {
++    if (isMockModeEnabled()) {
++      if (applyDemoSession(email, password, setToken, setUser)) {
++        return;
++      }
++      throw new Error('Invalid email or password. Demo accounts use password123.');
++    }
++
+     try {
+       const response = await fetch(`${api.baseURL}/auth/login`, {
+         method: 'POST',
+@@ -135,22 +201,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+         body: JSON.stringify({ email, password }),
+       });
+ 
++      if (isUnreachableApiResponse(response)) {
++        if (applyDemoSession(email, password, setToken, setUser)) {
++          return;
++        }
++        throw new Error(NETWORK_ERROR_MESSAGE);
++      }
++
+       if (!response.ok) {
+         const message = await parseApiError(response, 'Login failed');
+         throw new Error(message);
+       }
+ 
+       const data = await response.json();
++      setMockModeEnabled(false);
+       setToken(data.token);
+       setUser(data.user);
+       persistAuthToken(data.token, getKeepSignedInPreference());
+     } catch (error) {
+       console.error('Login error:', error);
++      if (isNetworkFailure(error)) {
++        if (applyDemoSession(email, password, setToken, setUser)) {
++          return;
++        }
++        throw new Error(NETWORK_ERROR_MESSAGE);
++      }
+       throw error;
+     }
+   };
+ 
+   const signup = async (email: string, password: string, name?: string) => {
++    if (isMockModeEnabled()) {
++      throw new Error(
++        'Signup requires a live API. Use a demo account (athena/boris/cora @example.com / password123) instead.'
++      );
++    }
++
+     try {
+       const response = await fetch(`${api.baseURL}/auth/signup`, {
+         method: 'POST',
+@@ -160,17 +246,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+         body: JSON.stringify({ email, password, name }),
+       });
+ 
++      if (isUnreachableApiResponse(response)) {
++        throw new Error(NETWORK_ERROR_MESSAGE);
++      }
++
+       if (!response.ok) {
+         const message = await parseApiError(response, 'Signup failed');
+         throw new Error(message);
+       }
+ 
+       const data = await response.json();
++      setMockModeEnabled(false);
+       setToken(data.token);
+       setUser(data.user);
+       persistAuthToken(data.token, getKeepSignedInPreference());
+     } catch (error) {
+       console.error('Signup error:', error);
++      if (isNetworkFailure(error)) {
++        throw new Error(NETWORK_ERROR_MESSAGE);
++      }
+       throw error;
+     }
+   };
+@@ -179,6 +273,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+     setUser(null);
+     setToken(null);
+     clearStoredAuthToken();
++    if (import.meta.env.VITE_ENABLE_MOCK_DATA !== 'true') {
++      setMockModeEnabled(false);
++    }
+   };
+ 
+   const value: AuthContextType = {
+diff --git a/stream-2-frontend/src/pages/Login.tsx b/stream-2-frontend/src/pages/Login.tsx
+index 58acaba..6e7673b 100644
+--- a/stream-2-frontend/src/pages/Login.tsx
++++ b/stream-2-frontend/src/pages/Login.tsx
+@@ -67,9 +67,20 @@ export const LoginPage: React.FC = () => {
+     }
+   };
+ 
+-  const fillDemoCredentials = (userEmail: string) => {
++  const loginAsDemo = async (userEmail: string) => {
+     setEmail(userEmail);
+     setPassword('password123');
++    setError('');
++    setIsLoading(true);
++
++    try {
++      await login(userEmail, 'password123');
++      navigate('/');
++    } catch (err) {
++      setError(err instanceof Error ? err.message : (zh ? '登录失败' : 'Login failed'));
++    } finally {
++      setIsLoading(false);
++    }
+   };
+ 
+   return (
+@@ -91,8 +102,9 @@ export const LoginPage: React.FC = () => {
+             </p>
+             <button
+               type="button"
+-              onClick={() => fillDemoCredentials('athena@example.com')}
+-              className="mt-6 inline-flex rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
++              onClick={() => loginAsDemo('athena@example.com')}
++              disabled={isLoading}
++              className="mt-6 inline-flex rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+             >
+               {zh ? '免费试用' : 'Try it free'}
+             </button>
+@@ -122,7 +134,7 @@ export const LoginPage: React.FC = () => {
+               </button>
+               <button
+                 type="button"
+-                onClick={() => fillDemoCredentials('cora@example.com')}
++                onClick={() => loginAsDemo('cora@example.com')}
+                 className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+               >
+                 {zh ? '体验演示账号' : 'Explore demo'}
+@@ -188,21 +200,21 @@ export const LoginPage: React.FC = () => {
+             <div className="grid gap-2 sm:grid-cols-3">
+               <button
+                 type="button"
+-                onClick={() => fillDemoCredentials('athena@example.com')}
++                onClick={() => loginAsDemo('athena@example.com')}
+                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+               >
+                 Athena
+               </button>
+               <button
+                 type="button"
+-                onClick={() => fillDemoCredentials('boris@example.com')}
++                onClick={() => loginAsDemo('boris@example.com')}
+                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+               >
+                 Boris
+               </button>
+               <button
+                 type="button"
+-                onClick={() => fillDemoCredentials('cora@example.com')}
++                onClick={() => loginAsDemo('cora@example.com')}
+                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+               >
+                 Cora
+diff --git a/stream-2-frontend/vercel.json b/stream-2-frontend/vercel.json
+index 568582e..3e4124c 100644
+--- a/stream-2-frontend/vercel.json
++++ b/stream-2-frontend/vercel.json
+@@ -3,10 +3,13 @@
+   "installCommand": "npm ci",
+   "buildCommand": "npm run build",
+   "outputDirectory": "dist",
++  "env": {
++    "VITE_ENABLE_MOCK_DATA": "true"
++  },
+   "rewrites": [
+     {
+-      "source": "/(.*)",
++      "source": "/((?!api/).*)",
+       "destination": "/index.html"
+     }
+   ]
+-}
+\ No newline at end of file
++}
+diff --git a/vercel.json b/vercel.json
+index c9ff89b..acbd6ab 100644
+--- a/vercel.json
++++ b/vercel.json
+@@ -4,10 +4,13 @@
+   "installCommand": "cd stream-2-frontend && npm ci",
+   "buildCommand": "cd stream-2-frontend && npm run build",
+   "outputDirectory": "stream-2-frontend/dist",
++  "env": {
++    "VITE_ENABLE_MOCK_DATA": "true"
++  },
+   "rewrites": [
+     {
+-      "source": "/(.*)",
++      "source": "/((?!api/).*)",
+       "destination": "/index.html"
+     }
+   ]
+-}
+\ No newline at end of file
++}
+-- 
+2.43.0
+
