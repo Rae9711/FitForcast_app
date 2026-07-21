@@ -3,6 +3,24 @@ import { api } from '../api/client';
 
 const AUTH_TOKEN_KEY = 'authToken';
 
+const NETWORK_ERROR_MESSAGE =
+  'Cannot reach the FitForecast API. Start the backend (port 3000) or set VITE_API_BASE_URL to your API URL.';
+
+const isNetworkFailure = (error: unknown) => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    error.name === 'TypeError' ||
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('load failed') ||
+    message.includes('network request failed')
+  );
+};
+
 const parseApiError = async (response: Response, fallbackMessage: string) => {
   try {
     const payload = await response.json();
@@ -101,7 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await fetch(`${api.baseURL}/auth/me`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
 
@@ -142,6 +160,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem(AUTH_TOKEN_KEY, data.token);
     } catch (error) {
       console.error('Login error:', error);
+      if (isNetworkFailure(error)) {
+        throw new Error(NETWORK_ERROR_MESSAGE);
+      }
       throw error;
     }
   };
@@ -167,6 +188,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem(AUTH_TOKEN_KEY, data.token);
     } catch (error) {
       console.error('Signup error:', error);
+      if (isNetworkFailure(error)) {
+        throw new Error(NETWORK_ERROR_MESSAGE);
+      }
       throw error;
     }
   };

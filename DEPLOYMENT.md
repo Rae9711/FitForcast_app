@@ -248,7 +248,9 @@ LOG_LEVEL=info
 
 #### Frontend (.env)
 ```bash
-VITE_API_BASE_URL=https://api.fitforecast.com
+# Local/Docker: use /api (Vite or nginx proxies to the backend)
+# Vercel/static: set the absolute deployed API origin at build time
+VITE_API_BASE_URL=/api
 VITE_DEFAULT_USER_ID=00000000-0000-0000-0000-000000000001
 VITE_ENABLE_MOCK_DATA=false
 ```
@@ -335,11 +337,13 @@ npm run seed
 
 ### Frontend Issues
 
-**"Cannot fetch data from API"**
+**"Cannot fetch data from API" / browser shows "Failed to fetch"**
 1. Check backend is running: `curl http://localhost:3000/health`
-2. Verify `VITE_API_BASE_URL` in `stream-2-frontend/.env`
-3. Check browser console for CORS errors
-4. Enable mocks temporarily: Set `VITE_ENABLE_MOCK_DATA=true`
+2. Prefer same-origin proxy: leave `VITE_API_BASE_URL=/api` (default) so Vite/nginx forward `/api/*` to the backend
+3. If you use an absolute API URL, verify `VITE_API_BASE_URL` in `stream-2-frontend/.env` and restart Vite after changing it
+4. On Vercel/static hosts, set `VITE_API_BASE_URL` at **build time** to your deployed API origin (do not leave it pointing at `localhost`)
+5. Check browser console for CORS errors; set backend `CORS_ORIGIN` to your frontend origin in production
+6. Enable mocks temporarily: Set `VITE_ENABLE_MOCK_DATA=true`
 
 **"Blank page or errors on load"**
 ```bash

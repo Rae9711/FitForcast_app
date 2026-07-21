@@ -366,7 +366,7 @@ NODE_ENV=development
 
 ### Frontend (.env)
 ```env
-VITE_API_BASE_URL=http://localhost:3000
+VITE_API_BASE_URL=/api
 ```
 
 ---

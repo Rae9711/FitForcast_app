@@ -47,20 +47,18 @@ services:
     build:
       context: ./stream-2-frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_DEFAULT_USER_ID: 00000000-0000-0000-0000-000000000001
+        VITE_ENABLE_MOCK_DATA: "false"
     container_name: fitforecast-frontend
     restart: unless-stopped
-    environment:
-      VITE_API_BASE_URL: http://localhost:3000
-      VITE_DEFAULT_USER_ID: 00000000-0000-0000-0000-000000000001
-      VITE_ENABLE_MOCK_DATA: "false"
     ports:
-      - "5173:5173"
+      - "5174:80"
     depends_on:
       - backend
     volumes:
-      - ./stream-2-frontend:/app
-      - /app/node_modules
-
+      - ./stream-2-frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 volumes:
   postgres_data:
     driver: local

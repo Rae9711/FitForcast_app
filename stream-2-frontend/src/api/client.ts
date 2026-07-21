@@ -5,6 +5,21 @@ import { mockApiClient } from './mocks';
 const USE_MOCKS = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 const AVAILABLE_METRICS: TrendMetricKey[] = ['post-energy', 'post-valence', 'post-stress'];
 
+/**
+ * Resolve the API base URL.
+ * Default to same-origin `/api` so Vite (dev) and nginx (Docker) proxies are used
+ * instead of a hardcoded localhost origin that fails in browsers / production hosts.
+ */
+export const resolveApiBaseUrl = (
+  configured: string | undefined = import.meta.env.VITE_API_BASE_URL
+): string => {
+  const trimmed = configured?.trim();
+  if (!trimmed) {
+    return '/api';
+  }
+  return trimmed.replace(/\/+$/, '');
+};
+
 type BackendEntry = {
   id: string;
   user_id: string;
@@ -268,7 +283,7 @@ export interface IApiClient {
 
 class ApiClient implements IApiClient {
   private axiosInstance: AxiosInstance;
-  public baseURL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+  public baseURL: string = resolveApiBaseUrl();
 
   constructor() {
     this.axiosInstance = axios.create({
@@ -293,8 +308,17 @@ class ApiClient implements IApiClient {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('authToken');
-          window.location.href = '/login';
+          const requestUrl = String(error.config?.url ?? '');
+          const isAuthEndpoint =
+            requestUrl.includes('/auth/login') || requestUrl.includes('/auth/signup');
+          const onAuthPage =
+            typeof window !== 'undefined' &&
+            (window.location.pathname === '/login' || window.location.pathname === '/signup');
+
+          if (!isAuthEndpoint && !onAuthPage) {
+            localStorage.removeItem('authToken');
+            window.location.href = '/login';
+          }
         }
         throw error;
       }

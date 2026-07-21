@@ -6,7 +6,7 @@
   "outputDirectory": "stream-2-frontend/dist",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
