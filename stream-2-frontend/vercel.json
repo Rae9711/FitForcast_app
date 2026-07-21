@@ -1,7 +1,11 @@
 {
+  "env": {
+    "VITE_ENABLE_MOCK_DATA": "true",
+    "VITE_API_BASE_URL": "/api"
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

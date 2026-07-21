@@ -1,7 +1,37 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '../api/client';
+import { authenticateDemoUser, parseDemoToken } from '../api/demoAuth';
+import { isMockModeEnabled, setMockModeEnabled } from '../api/mockMode';
 
 const AUTH_TOKEN_KEY = 'authToken';
+
+const NETWORK_ERROR_MESSAGE =
+  'Cannot reach the FitForecast API. Start the backend (port 3000), or use a demo account (athena/boris/cora @example.com / password123) for offline mode.';
+
+const isNetworkFailure = (error: unknown) => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    error.name === 'TypeError' ||
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('load failed') ||
+    message.includes('network request failed')
+  );
+};
+
+/** Vercel SPA/static hosts often return HTML or 404/405 for /api/* when no backend exists. */
+const isUnreachableApiResponse = (response: Response) => {
+  if ([404, 405, 501, 502, 503, 504].includes(response.status)) {
+    return true;
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  return contentType.includes('text/html');
+};
 
 const parseApiError = async (response: Response, fallbackMessage: string) => {
   try {
@@ -39,8 +69,29 @@ const decodeJwtExpiry = (tokenValue: string) => {
 };
 
 const isExpiredToken = (tokenValue: string) => {
+  if (parseDemoToken(tokenValue)) {
+    return false;
+  }
   const expiryMs = decodeJwtExpiry(tokenValue);
   return expiryMs !== null && expiryMs <= Date.now();
+};
+
+const applyDemoSession = (
+  email: string,
+  password: string,
+  setToken: (token: string) => void,
+  setUser: (user: User) => void
+) => {
+  const demo = authenticateDemoUser(email, password);
+  if (!demo) {
+    return false;
+  }
+
+  setMockModeEnabled(true);
+  setToken(demo.token);
+  setUser(demo.user);
+  localStorage.setItem(AUTH_TOKEN_KEY, demo.token);
+  return true;
 };
 
 interface User {
@@ -86,9 +137,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (storedToken) {
       if (isExpiredToken(storedToken)) {
         localStorage.removeItem(AUTH_TOKEN_KEY);
+        setMockModeEnabled(false);
         setIsLoading(false);
         return;
       }
+
+      const demoUser = parseDemoToken(storedToken);
+      if (demoUser) {
+        setMockModeEnabled(true);
+        setToken(storedToken);
+        setUser(demoUser);
+        setIsLoading(false);
+        return;
+      }
+
       setToken(storedToken);
       // Verify token and load user info
       fetchCurrentUser(storedToken);
@@ -101,7 +163,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await fetch(`${api.baseURL}/auth/me`, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
 
@@ -122,6 +184,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const login = async (email: string, password: string) => {
+    // Frontend-only deploys (e.g. Vercel) and explicit mock mode: never hit the network.
+    if (isMockModeEnabled()) {
+      if (applyDemoSession(email, password, setToken, setUser)) {
+        return;
+      }
+      throw new Error('Invalid email or password. Demo accounts use password123.');
+    }
+
     try {
       const response = await fetch(`${api.baseURL}/auth/login`, {
         method: 'POST',
@@ -131,22 +201,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
+      if (isUnreachableApiResponse(response)) {
+        if (applyDemoSession(email, password, setToken, setUser)) {
+          return;
+        }
+        throw new Error(NETWORK_ERROR_MESSAGE);
+      }
+
       if (!response.ok) {
         const message = await parseApiError(response, 'Login failed');
         throw new Error(message);
       }
 
       const data = await response.json();
+      setMockModeEnabled(false);
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem(AUTH_TOKEN_KEY, data.token);
     } catch (error) {
       console.error('Login error:', error);
+      if (isNetworkFailure(error)) {
+        if (applyDemoSession(email, password, setToken, setUser)) {
+          return;
+        }
+        throw new Error(NETWORK_ERROR_MESSAGE);
+      }
       throw error;
     }
   };
 
   const signup = async (email: string, password: string, name?: string) => {
+    if (isMockModeEnabled()) {
+      throw new Error(
+        'Signup requires a live API. Use a demo account (athena/boris/cora @example.com / password123) instead.'
+      );
+    }
+
     try {
       const response = await fetch(`${api.baseURL}/auth/signup`, {
         method: 'POST',
@@ -156,17 +246,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password, name }),
       });
 
+      if (isUnreachableApiResponse(response)) {
+        throw new Error(NETWORK_ERROR_MESSAGE);
+      }
+
       if (!response.ok) {
         const message = await parseApiError(response, 'Signup failed');
         throw new Error(message);
       }
 
       const data = await response.json();
+      setMockModeEnabled(false);
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem(AUTH_TOKEN_KEY, data.token);
     } catch (error) {
       console.error('Signup error:', error);
+      if (isNetworkFailure(error)) {
+        throw new Error(NETWORK_ERROR_MESSAGE);
+      }
       throw error;
     }
   };
@@ -175,6 +273,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    // Keep compile-time mock mode; only clear session fallback.
+    if (import.meta.env.VITE_ENABLE_MOCK_DATA !== 'true') {
+      setMockModeEnabled(false);
+    }
   };
 
   const value: AuthContextType = {

@@ -1,9 +1,24 @@
 import axios, { AxiosInstance } from 'axios';
 import { AnalyticsBundle, Entry, FeelingEntry, Goal, GoalDraft, GoalStatus, Insight, PredictionBundle, TrendDataPoint, TrendMetricKey, TrendsData } from '../types/index';
+import { isMockModeEnabled } from './mockMode';
 import { mockApiClient } from './mocks';
 
-const USE_MOCKS = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 const AVAILABLE_METRICS: TrendMetricKey[] = ['post-energy', 'post-valence', 'post-stress'];
+
+/**
+ * Resolve the API base URL.
+ * Default to same-origin `/api` so Vite (dev) and nginx (Docker) proxies are used
+ * instead of a hardcoded localhost origin that fails in browsers / production hosts.
+ */
+export const resolveApiBaseUrl = (
+  configured: string | undefined = import.meta.env.VITE_API_BASE_URL
+): string => {
+  const trimmed = configured?.trim();
+  if (!trimmed) {
+    return '/api';
+  }
+  return trimmed.replace(/\/+$/, '');
+};
 
 type BackendEntry = {
   id: string;
@@ -268,7 +283,7 @@ export interface IApiClient {
 
 class ApiClient implements IApiClient {
   private axiosInstance: AxiosInstance;
-  public baseURL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+  public baseURL: string = resolveApiBaseUrl();
 
   constructor() {
     this.axiosInstance = axios.create({
@@ -293,8 +308,17 @@ class ApiClient implements IApiClient {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('authToken');
-          window.location.href = '/login';
+          const requestUrl = String(error.config?.url ?? '');
+          const isAuthEndpoint =
+            requestUrl.includes('/auth/login') || requestUrl.includes('/auth/signup');
+          const onAuthPage =
+            typeof window !== 'undefined' &&
+            (window.location.pathname === '/login' || window.location.pathname === '/signup');
+
+          if (!isAuthEndpoint && !onAuthPage) {
+            localStorage.removeItem('authToken');
+            window.location.href = '/login';
+          }
         }
         throw error;
       }
@@ -306,7 +330,7 @@ class ApiClient implements IApiClient {
     raw_text: string,
     occurred_at: string
   ): Promise<Entry> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.createEntry(type, raw_text, occurred_at);
     }
 
@@ -319,7 +343,7 @@ class ApiClient implements IApiClient {
   }
 
   async getEntries(userId: string, limit?: number, page?: number): Promise<Entry[]> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getEntries(userId, limit);
     }
 
@@ -337,7 +361,7 @@ class ApiClient implements IApiClient {
     stress: number,
     notes?: string
   ): Promise<FeelingEntry> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.addFeeling(entryId, when, valence, energy, stress, notes);
     }
 
@@ -375,7 +399,7 @@ class ApiClient implements IApiClient {
     windowDays?: number,
     metric: TrendMetricKey = 'post-energy'
   ): Promise<TrendsData> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getTrends(userId, windowDays, metric);
     }
 
@@ -395,7 +419,7 @@ class ApiClient implements IApiClient {
   }
 
   async getInsights(userId: string): Promise<Insight[]> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getInsights(userId);
     }
 
@@ -404,7 +428,7 @@ class ApiClient implements IApiClient {
   }
 
   async getPredictions(userId: string): Promise<PredictionBundle> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getPredictions(userId);
     }
 
@@ -415,7 +439,7 @@ class ApiClient implements IApiClient {
   }
 
   async getAnalytics(userId: string, windowDays?: number): Promise<AnalyticsBundle> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getAnalytics(userId, windowDays);
     }
 
@@ -429,7 +453,7 @@ class ApiClient implements IApiClient {
   }
 
   async getGoals(): Promise<Goal[]> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.getGoals();
     }
 
@@ -438,7 +462,7 @@ class ApiClient implements IApiClient {
   }
 
   async createGoal(input: GoalDraft): Promise<Goal> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.createGoal(input);
     }
 
@@ -454,7 +478,7 @@ class ApiClient implements IApiClient {
   }
 
   async updateGoal(goalId: string, input: Partial<GoalDraft> & { status?: GoalStatus }): Promise<Goal> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.updateGoal(goalId, input);
     }
 
@@ -471,7 +495,7 @@ class ApiClient implements IApiClient {
   }
 
   async dismissInsight(insightId: string): Promise<void> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return mockApiClient.dismissInsight(insightId);
     }
 
@@ -479,7 +503,7 @@ class ApiClient implements IApiClient {
   }
 
   async deleteEntry(entryId: string): Promise<void> {
-    if (USE_MOCKS) {
+    if (isMockModeEnabled()) {
       return;
     }
 

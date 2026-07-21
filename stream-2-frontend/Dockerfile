@@ -3,6 +3,14 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Vite inlines these at build time — runtime env alone is not enough.
+ARG VITE_API_BASE_URL=/api
+ARG VITE_DEFAULT_USER_ID=00000000-0000-0000-0000-000000000001
+ARG VITE_ENABLE_MOCK_DATA=false
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
+    VITE_DEFAULT_USER_ID=$VITE_DEFAULT_USER_ID \
+    VITE_ENABLE_MOCK_DATA=$VITE_ENABLE_MOCK_DATA
+
 # Copy package files
 COPY package*.json ./
 COPY tsconfig*.json ./

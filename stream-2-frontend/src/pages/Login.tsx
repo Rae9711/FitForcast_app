@@ -44,9 +44,20 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const fillDemoCredentials = (userEmail: string) => {
+  const loginAsDemo = async (userEmail: string) => {
     setEmail(userEmail);
     setPassword('password123');
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await login(userEmail, 'password123');
+      navigate('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -68,8 +79,9 @@ export const LoginPage: React.FC = () => {
             </p>
             <button
               type="button"
-              onClick={() => fillDemoCredentials('athena@example.com')}
-              className="mt-6 inline-flex rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              onClick={() => loginAsDemo('athena@example.com')}
+              disabled={isLoading}
+              className="mt-6 inline-flex rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
             >
               Try it free
             </button>
@@ -99,8 +111,9 @@ export const LoginPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => fillDemoCredentials('cora@example.com')}
-                className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                onClick={() => loginAsDemo('cora@example.com')}
+                disabled={isLoading}
+                className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
               >
                 Explore demo
               </button>
@@ -165,22 +178,25 @@ export const LoginPage: React.FC = () => {
             <div className="grid gap-2 sm:grid-cols-3">
               <button
                 type="button"
-                onClick={() => fillDemoCredentials('athena@example.com')}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+                onClick={() => loginAsDemo('athena@example.com')}
+                disabled={isLoading}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-60"
               >
                 Athena
               </button>
               <button
                 type="button"
-                onClick={() => fillDemoCredentials('boris@example.com')}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+                onClick={() => loginAsDemo('boris@example.com')}
+                disabled={isLoading}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-60"
               >
                 Boris
               </button>
               <button
                 type="button"
-                onClick={() => fillDemoCredentials('cora@example.com')}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50"
+                onClick={() => loginAsDemo('cora@example.com')}
+                disabled={isLoading}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-60"
               >
                 Cora
               </button>
